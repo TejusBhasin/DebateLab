@@ -69,7 +69,7 @@ export default function LandingPreview() {
           </div>
 
           {/* Center tabs */}
-          <div className="hidden md:flex items-center gap-0.5">
+          <div className="hidden lg:flex items-center gap-0.5">
             {NAV_TABS.map((tab) =>
             <button
               key={tab.id}
@@ -89,7 +89,7 @@ export default function LandingPreview() {
           </div>
 
           {/* Auth buttons */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
             <Link to="/login">
               <button className="px-4 py-1.5 text-sm text-white border border-white border-opacity-20 rounded-lg transition-all hover:border-opacity-40">
                 Sign In
@@ -103,7 +103,7 @@ export default function LandingPreview() {
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center gap-3">
+          <div className="lg:hidden flex items-center gap-3">
             <Link to="/login">
               <button className="px-3 py-1.5 text-xs text-white border border-white border-opacity-20 rounded-lg">
                 Sign In
@@ -161,20 +161,20 @@ export default function LandingPreview() {
       {/* HOME */}
       {activeTab === "home" &&
       <div className="flex flex-col items-center text-center px-6">
-          <div className="mt-16 mb-8 w-16 h-16 bg-neutral-900 border border-white border-opacity-10 rounded-2xl flex items-center justify-center shadow-2xl">
-            <Zap className="w-8 h-8 text-blue-400" />
+          <div className="mt-10 sm:mt-16 mb-6 sm:mb-8 w-14 h-14 sm:w-16 sm:h-16 bg-neutral-900 border border-white border-opacity-10 rounded-2xl flex items-center justify-center shadow-2xl">
+            <Zap className="w-7 h-7 sm:w-8 sm:h-8 text-blue-400" />
           </div>
 
-          <h1 className="text-5xl sm:text-6xl font-bold font-heading leading-tight mb-4 max-w-2xl">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold font-heading leading-tight mb-4 max-w-2xl">
             Your debate prep,{" "}
             <span className="text-blue-400">supercharged.</span>
           </h1>
 
-          <p className="text-white text-opacity-50 text-lg max-w-lg mx-auto mb-10 leading-relaxed">
+          <p className="text-white text-opacity-50 text-base sm:text-lg max-w-lg mx-auto mb-8 sm:mb-10 leading-relaxed">
             AI-powered contentions, practice rounds, MUN documents, and coaching — all in one place.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto mb-12 sm:mb-16">
             <Link to="/register" className="w-full sm:w-auto">
               <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all text-sm">
                 Get Started Free <span>→</span>
@@ -187,7 +187,7 @@ export default function LandingPreview() {
             </Link>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-4 max-w-3xl w-full mb-20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl w-full mb-16 sm:mb-20">
             {FEATURES.map(({ icon: Icon, label, desc }) =>
           <div key={label} className="bg-neutral-900 border border-white border-opacity-10 rounded-2xl p-6 text-left hover:border-opacity-20 transition-all">
                 <Icon className="w-5 h-5 text-blue-400 mb-3" />
@@ -203,18 +203,18 @@ export default function LandingPreview() {
       {activeTab === "discover" &&
       <div className="max-w-4xl mx-auto px-6 pt-12 pb-20">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold font-heading mb-3">Discover powerful features.</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold font-heading mb-3">Discover powerful features.</h2>
             <p className="text-white text-opacity-40 text-base max-w-md mx-auto">
               Explore the tools that give DebateLab users a competitive edge in every round.
             </p>
           </div>
           
           <div className="space-y-8">
-            <div className="bg-neutral-900 border border-white border-opacity-10 rounded-2xl p-8 flex flex-col md:flex-row gap-8 items-center hover:border-opacity-20 transition-all">
+            <div className="bg-neutral-900 border border-white border-opacity-10 rounded-2xl p-5 sm:p-8 flex flex-col md:flex-row gap-6 sm:gap-8 items-center hover:border-opacity-20 transition-all">
               <div className="flex-1 text-left">
                 <div className="flex items-center gap-3 mb-3">
                   <Brain className="w-6 h-6 text-blue-400" />
-                  <h3 className="text-2xl font-bold font-heading text-white">AI Coach</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold font-heading text-white">AI Coach</h3>
                 </div>
                 <p className="text-white text-opacity-50 leading-relaxed mb-6">
                   Meet your personalized, 24/7 debate coach. Our AI analyzes your performance, tracks your win rates and speaker points, and gives you actionable feedback after every practice round. Review your strengths and target specific weaknesses before tournament day.
@@ -222,15 +222,15 @@ export default function LandingPreview() {
                 <Link to="/register"><button className="text-sm font-semibold text-blue-400 hover:text-blue-300">Try AI Coach →</button></Link>
               </div>
               <div className="w-full md:w-1/2 aspect-[4/3] rounded-xl overflow-hidden shadow-2xl">
-                <img src="https://media.base44.com/images/public/6a1d6e51e5d2301311f71188/96838290d_generated_image.png" alt="AI Coach" className="w-full h-full object-cover" />
+                <img src="https://media.base44.com/images/public/6a1d6e51e5d2301311f71188/96838290d_generated_image.png" alt="AI Coach" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </div>
             </div>
 
-            <div className="bg-neutral-900 border border-white border-opacity-10 rounded-2xl p-8 flex flex-col md:flex-row-reverse gap-8 items-center hover:border-opacity-20 transition-all">
+            <div className="bg-neutral-900 border border-white border-opacity-10 rounded-2xl p-5 sm:p-8 flex flex-col md:flex-row-reverse gap-6 sm:gap-8 items-center hover:border-opacity-20 transition-all">
               <div className="flex-1 text-left">
                 <div className="flex items-center gap-3 mb-3">
                   <MessageSquare className="w-6 h-6 text-violet-400" />
-                  <h3 className="text-2xl font-bold font-heading text-white">Practice Rounds</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold font-heading text-white">Practice Rounds</h3>
                 </div>
                 <p className="text-white text-opacity-50 leading-relaxed mb-6">
                   Debate against an advanced AI opponent that simulates realistic tournament conditions. Customize the difficulty, format, and side. Deliver your speeches, get cross-examined, and receive a comprehensive judge decision (RFD) with detailed scoring.
@@ -238,15 +238,15 @@ export default function LandingPreview() {
                 <Link to="/register"><button className="text-sm font-semibold text-violet-400 hover:text-violet-300">Start Practicing →</button></Link>
               </div>
               <div className="w-full md:w-1/2 aspect-[4/3] rounded-xl overflow-hidden shadow-2xl">
-                <img src="https://media.base44.com/images/public/6a1d6e51e5d2301311f71188/a38e20df3_generated_image.png" alt="Practice Rounds" className="w-full h-full object-cover" />
+                <img src="https://media.base44.com/images/public/6a1d6e51e5d2301311f71188/a38e20df3_generated_image.png" alt="Practice Rounds" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </div>
             </div>
 
-            <div className="bg-neutral-900 border border-white border-opacity-10 rounded-2xl p-8 flex flex-col md:flex-row gap-8 items-center hover:border-opacity-20 transition-all">
+            <div className="bg-neutral-900 border border-white border-opacity-10 rounded-2xl p-5 sm:p-8 flex flex-col md:flex-row gap-6 sm:gap-8 items-center hover:border-opacity-20 transition-all">
               <div className="flex-1 text-left">
                 <div className="flex items-center gap-3 mb-3">
                   <FileText className="w-6 h-6 text-teal-400" />
-                  <h3 className="text-2xl font-bold font-heading text-white">Rebuttal Hub</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold font-heading text-white">Rebuttal Hub</h3>
                 </div>
                 <p className="text-white text-opacity-50 leading-relaxed mb-6">
                   Instantly counter your opponent's arguments. Type in their claims during the round, and the Rebuttal Hub generates real-time, evidence-backed counter-arguments perfectly aligned with your side of the motion. Say goodbye to struggling during prep time.
@@ -254,15 +254,15 @@ export default function LandingPreview() {
                 <Link to="/register"><button className="text-sm font-semibold text-teal-400 hover:text-teal-300">Explore Rebuttals →</button></Link>
               </div>
               <div className="w-full md:w-1/2 aspect-[4/3] rounded-xl overflow-hidden shadow-2xl">
-                <img src="https://media.base44.com/images/public/6a1d6e51e5d2301311f71188/db0119a2b_generated_image.png" alt="Rebuttal Hub" className="w-full h-full object-cover" />
+                <img src="https://media.base44.com/images/public/6a1d6e51e5d2301311f71188/db0119a2b_generated_image.png" alt="Rebuttal Hub" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </div>
             </div>
 
-            <div className="bg-neutral-900 border border-white border-opacity-10 rounded-2xl p-8 flex flex-col md:flex-row-reverse gap-8 items-center hover:border-opacity-20 transition-all">
+            <div className="bg-neutral-900 border border-white border-opacity-10 rounded-2xl p-5 sm:p-8 flex flex-col md:flex-row-reverse gap-6 sm:gap-8 items-center hover:border-opacity-20 transition-all">
               <div className="flex-1 text-left">
                 <div className="flex items-center gap-3 mb-3">
                   <Globe className="w-6 h-6 text-amber-400" />
-                  <h3 className="text-2xl font-bold font-heading text-white">Office Hours</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold font-heading text-white">Office Hours</h3>
                 </div>
                 <p className="text-white text-opacity-50 leading-relaxed mb-6">
                   Stuck on debate jargon, rules, or tournament strategy? Drop into Office Hours to ask our AI debate expert anything. Get immediate, clear answers on formatting, speaker duties, and tactical maneuvers.
@@ -270,7 +270,7 @@ export default function LandingPreview() {
                 <Link to="/register"><button className="text-sm font-semibold text-amber-400 hover:text-amber-300">Join Office Hours →</button></Link>
               </div>
               <div className="w-full md:w-1/2 aspect-[4/3] rounded-xl overflow-hidden shadow-2xl">
-                <img src="https://media.base44.com/images/public/6a1d6e51e5d2301311f71188/e71aee368_generated_image.png" alt="Office Hours" className="w-full h-full object-cover" />
+                <img src="https://media.base44.com/images/public/6a1d6e51e5d2301311f71188/e71aee368_generated_image.png" alt="Office Hours" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               </div>
             </div>
           </div>
@@ -281,7 +281,7 @@ export default function LandingPreview() {
       {activeTab === "formats" &&
       <div className="max-w-3xl mx-auto px-6 pt-12 pb-20">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold font-heading mb-3">Every format, covered.</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold font-heading mb-3">Every format, covered.</h2>
             <p className="text-white text-opacity-40 text-base max-w-md mx-auto">
               Purpose-built toolkits for the four major competitive debate and speech formats.
             </p>
