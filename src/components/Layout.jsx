@@ -143,9 +143,7 @@ export default function Layout() {
                 ["/model-congress", <FileText className="w-3.5 h-3.5" />, "Congress"],
                 ["/research", <Search className="w-3.5 h-3.5" />, "Research"],
                 ["/other-documents", <FileText className="w-3.5 h-3.5" />, "Other Docs"],
-                ["/match", <Swords className="w-3.5 h-3.5" />, "Match"],
                 ["/projects", <Folder className="w-3.5 h-3.5" />, "Projects"],
-                ["/ai-editor", <Sparkles className="w-3.5 h-3.5" />, "AI Editor"],
               ["/speech-generator", <Megaphone className="w-3.5 h-3.5" />, "Speech"],
               ].map(([to, icon, label]) => (
                 <Link key={to} to={to} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${['/other-documents', '/ai-editor', '/speech-generator'].includes(to) ? 'hidden xl:flex' : ''} ${active(to) ? 'bg-primary text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
