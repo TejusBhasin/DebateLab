@@ -381,7 +381,7 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
     { id: "chat", icon: MessageSquare, label: "AI Chats" },
     { id: "agent", icon: Globe, label: "Research Agent" },
     { id: "collab", icon: Users, label: "Collab & Activity" },
-    { id: "alldocs", icon: FileText, label: `All Docs (${otherDocs.length + contentions.length})` },
+    { id: "alldocs", icon: FileText, label: `All Docs (${otherDocs.length})` },
   ];
 
   return (
@@ -742,24 +742,7 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
               <FileText className="w-4 h-4 text-violet-500" />
               <h3 className="font-bold text-slate-900 font-heading text-sm">All Documents</h3>
             </div>
-            <p className="text-xs text-slate-500">Every document in this project — contentions, saved research, and custom documents — lives here.</p>
-          </div>
-
-          {/* Contentions as documents */}
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Contentions ({contentions.length})</h4>
-            {contentions.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">No contentions yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {contentions.map(c => (
-                  <div key={c.id} className="bg-white rounded-xl border border-slate-200 p-3">
-                    <h5 className="font-semibold text-sm text-slate-900">{c.title}</h5>
-                    {c.claim && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{c.claim}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="text-xs text-slate-500">Every saved document in this project — research, speeches, and custom documents. Contentions live in their own tab.</p>
           </div>
 
           {/* Custom + research documents */}

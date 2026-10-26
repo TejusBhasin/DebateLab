@@ -26,21 +26,39 @@ export default function ProjectSuggestionsWidget({ projectId }) {
 
     const queue = suggestions.slice(0, MAX_QUEUE);
 
-    const updateStatus = useMutation({
-        mutationFn: ({ id, status }) => base44.entities.ProjectSuggestion.update(id, { status }),
-        onSuccess: (_, { status }) => {
-            queryClient.invalidateQueries({ queryKey: ['project_suggestions'] });
-            if (status === 'approved') toast.success("Suggestion approved! Don't forget to apply it to your project.");
-        }
+    const [applyingId, setApplyingId] = useState(null);
+
+    const rejectSuggestion = useMutation({
+        mutationFn: ({ id }) => base44.entities.ProjectSuggestion.update(id, { status: 'rejected' }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project_suggestions'] })
     });
+
+    const applySuggestion = async (s) => {
+        if (applyingId) return;
+        setApplyingId(s.id);
+        try {
+            const res = await base44.functions.invoke("applyProjectSuggestion", { suggestionId: s.id });
+            const data = res?.data ?? res;
+            if (data?.error) throw new Error(data.error);
+            toast.success("Suggestion applied! The written implementation is saved in your project's All Docs tab.");
+            queryClient.invalidateQueries({ queryKey: ['project_suggestions'] });
+            queryClient.invalidateQueries({ queryKey: ['project_other_documents'] });
+            queryClient.invalidateQueries({ queryKey: ['other_documents'] });
+        } catch (e) {
+            toast.error(e.message || "Failed to apply suggestion");
+        } finally {
+            setApplyingId(null);
+        }
+    };
 
     const generateOnDemand = async () => {
         if (generating) return;
         setGenerating(true);
         try {
             const res = await base44.functions.invoke("generateProjectSuggestions", { projectId });
-            if (res?.message) toast.info(res.message);
-            else if (res?.processed > 0) toast.success(`${res.processed} suggestion${res.processed !== 1 ? 's' : ''} generated!`);
+            const data = res?.data ?? res;
+            if (data?.message) toast.info(data.message);
+            else if (data?.processed > 0) toast.success(`${data.processed} suggestion${data.processed !== 1 ? 's' : ''} generated!`);
             else toast.info("No new suggestions generated.");
             queryClient.invalidateQueries({ queryKey: ['project_suggestions'] });
         } catch (e) {
@@ -90,11 +108,11 @@ export default function ProjectSuggestionsWidget({ projectId }) {
                                 <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">{s.description}</p>
                             </div>
                             <div className="flex gap-2 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
-                                <Button variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: s.id, status: 'rejected' })} className="flex-1 sm:flex-none border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 h-8 text-xs">
+                                <Button variant="outline" size="sm" onClick={() => rejectSuggestion.mutate({ id: s.id })} className="flex-1 sm:flex-none border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 h-8 text-xs">
                                     <X className="w-3.5 h-3.5 mr-1" /> Dismiss
                                 </Button>
-                                <Button size="sm" onClick={() => updateStatus.mutate({ id: s.id, status: 'approved' })} className="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-white h-8 text-xs">
-                                    <Check className="w-3.5 h-3.5 mr-1" /> Approve
+                                <Button size="sm" onClick={() => applySuggestion(s)} disabled={applyingId === s.id} className="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-white h-8 text-xs">
+                                    {applyingId === s.id ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />} {applyingId === s.id ? "Applying..." : "Apply"}
                                 </Button>
                             </div>
                         </div>

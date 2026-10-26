@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import SaveGeneratedDialog from "@/components/SaveGeneratedDialog";
 import { extractHooksAndCtas, buildAntiRepetitionText } from "@/lib/hookCtaUtils";
+import { getSpeechFormatGuide } from "@/lib/speechFormatGuides";
 
 const TONES = ["Persuasive", "Conversational", "Formal", "Aggressive", "Inspirational", "Analytical", "Passionate", "Neutral", "Humorous"];
 const SPEECH_TYPES = ["Opening Statement", "Closing Argument", "Constructive Speech", "Rebuttal Speech", "Cross-Examination Prep", "Position Speech", "Committee Speech", "Keynote Address", "TED-style Talk", "Commencement", "Impromptu", "Custom"];
@@ -95,6 +96,7 @@ export default function SpeechGenerator() {
 
       const { hooks, ctas } = extractHooksAndCtas(projectDocs);
       const antiRepetition = buildAntiRepetitionText(hooks, ctas);
+      const formatGuide = getSpeechFormatGuide(format) || getSpeechFormatGuide(selectedProject?.format);
 
       const prompt = `You are an elite speechwriter and debate coach. Write a complete, ready-to-deliver speech.
 
@@ -107,6 +109,7 @@ SPEECH PARAMETERS:
 - Side/Position: ${side}
 - Target Audience: ${audience}
 - Format: ${format}
+${formatGuide ? `\nFORMAT-SPECIFIC BEST PRACTICES — follow these researched, format-specific techniques when structuring and writing this speech:\n${formatGuide}\n` : ""}
 ${customInstructions.trim() ? `\nADDITIONAL INSTRUCTIONS:\n${customInstructions}` : ""}
 
 REQUIREMENTS:

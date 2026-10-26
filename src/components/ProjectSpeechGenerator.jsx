@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import ReactMarkdown from "react-markdown";
 import { useToast } from "@/components/ui/use-toast";
 import { extractHooksAndCtas, buildAntiRepetitionText } from "@/lib/hookCtaUtils";
+import { getSpeechFormatGuide } from "@/lib/speechFormatGuides";
 
 /**
  * Generates a full written speech from ALL project info:
@@ -106,6 +107,7 @@ export default function ProjectSpeechGenerator({ project, contentions, rebuttals
         : `Write a SHORT, punchy conclusion — 2-3 sentences that land the final blow and sit down. No rambling.`;
 
       const antiRepetition = buildAntiRepetition();
+      const formatGuide = getSpeechFormatGuide(project?.format);
 
       const prompt = `You are an elite debate coach writing a complete, ready-to-deliver speech.
 
@@ -113,6 +115,7 @@ PROJECT CONTEXT:
 ${context}
 ${antiRepetition ? `\n${antiRepetition}\n` : ""}
 Write a full ${minutes}-minute speech (approximately ${Math.round(minutes * 130)} words) for the ${project?.side || 'assigned'} side.
+${formatGuide ? `\nFORMAT-SPECIFIC BEST PRACTICES (${project?.format.replace(/_/g, ' ')}) — follow these researched techniques when writing this speech:\n${formatGuide}\n` : ""}
 
 Tone: ${tone}.
 ${customPrompt.trim() ? `\nADDITIONAL INSTRUCTIONS (what to write about):\n${customPrompt.trim()}\n` : ""}
