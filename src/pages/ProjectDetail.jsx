@@ -588,33 +588,64 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
                 <Sparkles className="w-3.5 h-3.5" /> Generate Contentions
               </Button>
             </div>
-          ) : contentions.map(c => (
-            <div key={c.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition-all ${selectedIds.has(c.id) ? "border-primary ring-1 ring-primary/20" : "border-slate-200"}`}>
-              <div className="flex items-start gap-3">
-                <button onClick={() => toggleSelect(c.id)} className="mt-0.5 shrink-0">
-                  {selectedIds.has(c.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-slate-300 hover:text-slate-500" />}
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-bold text-slate-900 font-heading text-sm">{c.title}</h3>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {c.difficulty && <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${DIFF_COLORS[c.difficulty] || "bg-slate-100 text-slate-600"}`}>{c.difficulty}</span>}
-                      <button onClick={() => deleteContention.mutate(c.id)} className="p-1 hover:bg-red-50 rounded-lg text-slate-300 hover:text-red-400 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+          ) : (
+            <div className="space-y-6">
+              {(() => {
+                const proSides = ["government", "affirmative", "sponsor", "pro"];
+                const fmt = project?.format;
+                const isParli = fmt === "parliamentary";
+                const isCongress = fmt === "model_congress";
+                const isMUN = fmt === "model_un";
+                const proLabel = isParli ? "Gov (Prop) Contentions" : isCongress ? "Sponsor (Pro) Contentions" : isMUN ? "Affirmative Contentions" : "Pro Contentions";
+                const oppLabel = isParli ? "Opp Contentions" : isCongress ? "Opposition (Con) Contentions" : isMUN ? "Negative Contentions" : "Con Contentions";
+                const proList = contentions.filter(c => proSides.includes((c.side || "").toLowerCase()));
+                const oppList = contentions.filter(c => !proSides.includes((c.side || "").toLowerCase()));
+                return [[proLabel, proList], [oppLabel, oppList]].map(([label, list]) => (
+                  <div key={label}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-bold text-slate-900 font-heading text-sm">{label}</h3>
+                      <span className="text-xs font-medium text-slate-400">({list.length})</span>
                     </div>
+                    {list.length === 0 ? (
+                      <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-5 text-center">
+                        <p className="text-slate-400 text-xs">No contentions on this side yet. Generate some above.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {list.map(c => (
+                          <div key={c.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition-all ${selectedIds.has(c.id) ? "border-primary ring-1 ring-primary/20" : "border-slate-200"}`}>
+                            <div className="flex items-start gap-3">
+                              <button onClick={() => toggleSelect(c.id)} className="mt-0.5 shrink-0">
+                                {selectedIds.has(c.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-slate-300 hover:text-slate-500" />}
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <h3 className="font-bold text-slate-900 font-heading text-sm">{c.title}</h3>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {c.difficulty && <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${DIFF_COLORS[c.difficulty] || "bg-slate-100 text-slate-600"}`}>{c.difficulty}</span>}
+                                    <button onClick={() => deleteContention.mutate(c.id)} className="p-1 hover:bg-red-50 rounded-lg text-slate-300 hover:text-red-400 transition-colors">
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                                {c.claim && <p className="text-xs text-slate-600 leading-relaxed mb-1"><span className="font-semibold text-slate-400">Claim:</span> {c.claim}</p>}
+                                {c.impact && <p className="text-xs text-slate-500 leading-relaxed"><span className="font-semibold text-slate-400">Impact:</span> {c.impact}</p>}
+                                {c.evidence?.length > 0 && (
+                                  <div className="mt-2 flex items-center gap-1 text-xs text-slate-400">
+                                    <BookOpen className="w-3 h-3" /> {c.evidence.length} evidence piece{c.evidence.length !== 1 ? "s" : ""}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {c.claim && <p className="text-xs text-slate-600 leading-relaxed mb-1"><span className="font-semibold text-slate-400">Claim:</span> {c.claim}</p>}
-                  {c.impact && <p className="text-xs text-slate-500 leading-relaxed"><span className="font-semibold text-slate-400">Impact:</span> {c.impact}</p>}
-                  {c.evidence?.length > 0 && (
-                    <div className="mt-2 flex items-center gap-1 text-xs text-slate-400">
-                      <BookOpen className="w-3 h-3" /> {c.evidence.length} evidence piece{c.evidence.length !== 1 ? "s" : ""}
-                    </div>
-                  )}
-                </div>
-              </div>
+                ));
+              })()}
             </div>
-          ))}
+          )}
         </div>
       )}
 

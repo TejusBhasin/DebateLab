@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Save, ExternalLink, Star, Share2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Save, ExternalLink, Star, Share2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { haptic, shareContent } from "@/lib/native";
 import { useToast } from "@/components/ui/use-toast";
@@ -11,7 +11,7 @@ const Section = ({ label, children, color = "bg-slate-50" }) => (
   </div>
 );
 
-export default function ContentionCard({ contention: c, onSave, saving, defaultExpanded = false }) {
+export default function ContentionCard({ contention: c, onSave, saving, defaultExpanded = false, onDelete }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const { toast } = useToast();
 
@@ -41,6 +41,11 @@ export default function ContentionCard({ contention: c, onSave, saving, defaultE
           <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onSave(); }} disabled={saving} className="gap-1.5 text-xs h-8">
             <Save className="w-3 h-3" /> Save
           </Button>
+          {onDelete && (
+            <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="h-8 w-8 p-0" aria-label="Delete contention">
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          )}
           {expanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
         </div>
       </div>

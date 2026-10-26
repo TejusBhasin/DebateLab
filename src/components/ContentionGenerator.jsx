@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Sparkles, Save, BookOpen, Trash2, Info } from "lucide-react";
+import { Loader2, Sparkles, Save, BookOpen, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import ContentionCard from "./ContentionCard";
@@ -177,15 +177,7 @@ export default function ContentionGenerator({ format = "parliamentary" }) {
               <p className="text-slate-400 text-sm">No saved contentions yet. Generate and save some!</p>
             </div>
           ) : savedContentions.map((c) => (
-            <div key={c.id} className="relative">
-              <ContentionCard contention={c} onSave={() => {}} saving={false} />
-              <button
-                onClick={() => deleteContention.mutate(c.id)}
-                className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+            <ContentionCard key={c.id} contention={c} onSave={() => {}} saving={false} onDelete={() => deleteContention.mutate(c.id)} />
           ))}
         </div>
       )}
