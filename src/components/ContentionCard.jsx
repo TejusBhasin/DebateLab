@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Save, ExternalLink, Star, Share2, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Save, ExternalLink, Star, Share2, Trash2, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { haptic, shareContent } from "@/lib/native";
 import { useToast } from "@/components/ui/use-toast";
 import QuickCopyDialog from "@/components/QuickCopyDialog";
 import ExportDocButton from "@/components/ExportDocButton";
 import { contentionToMarkdown } from "@/lib/exportDoc";
+import AIJotDownDialog from "@/components/AIJotDownDialog";
 
 const Section = ({ label, children, color = "bg-slate-50" }) => (
   <div className={`${color} rounded-xl p-4`}>
@@ -16,6 +17,7 @@ const Section = ({ label, children, color = "bg-slate-50" }) => (
 
 export default function ContentionCard({ contention: c, onSave, saving, defaultExpanded = false, onDelete }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [jotOpen, setJotOpen] = useState(false);
   const { toast } = useToast();
 
   const handleShare = async (e) => {
@@ -57,6 +59,12 @@ export default function ContentionCard({ contention: c, onSave, saving, defaultE
 
       {expanded && (
         <div className="px-5 pb-5 space-y-3 border-t border-slate-100 pt-4">
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setJotOpen(true); }} className="gap-1.5 text-xs h-8">
+              <PenLine className="w-3 h-3" /> AI Jot-Down Generator
+            </Button>
+          </div>
+
           {/* Core argument */}
           <div className="grid sm:grid-cols-3 gap-3">
             <Section label="Claim" color="bg-blue-50">
@@ -161,6 +169,8 @@ export default function ContentionCard({ contention: c, onSave, saving, defaultE
           )}
         </div>
       )}
+
+      <AIJotDownDialog open={jotOpen} onOpenChange={setJotOpen} contention={c} />
     </div>
   );
 }

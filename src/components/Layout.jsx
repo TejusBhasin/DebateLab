@@ -7,7 +7,7 @@ import Dashboard from "@/pages/Dashboard";
 import Projects from "@/pages/Projects";
 import CoachChat from "@/pages/CoachChat";
 import Forum from "@/pages/Forum";
-import { ChevronDown, BookOpen, Globe, FileText, Trophy, User, Zap, Menu, X, LayoutGrid, Folder, LogOut, LayoutDashboard, Brain, MessageSquare, Target, Users, Sparkles, GraduationCap, Swords, Bell, Mic, Timer, Landmark, Layers3, Search, Megaphone } from "lucide-react";
+import { ChevronDown, BookOpen, Globe, FileText, Trophy, User, Zap, Menu, X, LayoutGrid, Folder, LogOut, LayoutDashboard, Brain, MessageSquare, Target, Users, Sparkles, GraduationCap, Swords, Bell, Mic, Timer, Landmark, Layers3, Search, Megaphone, Library } from "lucide-react";
 import { useUnMode } from "@/hooks/useUnMode";
 
 const doLogout = async () => {
@@ -146,8 +146,9 @@ export default function Layout() {
                 ["/other-documents", <FileText className="w-3.5 h-3.5" />, "Other Docs"],
                 ["/projects", <Folder className="w-3.5 h-3.5" />, "Projects"],
               ["/speech-generator", <Megaphone className="w-3.5 h-3.5" />, "Speech"],
+              ["/evidence", <Library className="w-3.5 h-3.5" />, "Evidence"],
               ].map(([to, icon, label]) => (
-                <Link key={to} to={to} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${['/other-documents', '/ai-editor', '/speech-generator', '/toolkit'].includes(to) ? 'hidden xl:flex' : ''} ${active(to) ? 'bg-primary text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
+                <Link key={to} to={to} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${['/other-documents', '/ai-editor', '/speech-generator', '/toolkit', '/evidence'].includes(to) ? 'hidden xl:flex' : ''} ${active(to) ? 'bg-primary text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
                   {icon}{label}
                 </Link>
               ))}
@@ -300,6 +301,7 @@ export default function Layout() {
               ["/research", Search, "Research"],
               ["/toolkit", Target, "Debate Toolkit"],
               ["/other-documents", FileText, "Other Docs"],
+              ["/evidence", Library, "Evidence Library"],
               ["/formats", LayoutGrid, "Formats"],
               ["/office-hours", MessageSquare, "Office Hours"],
               ["/tournament", Trophy, "Tournament"],

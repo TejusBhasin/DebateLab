@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { PenLine, Play, Pause, RotateCcw, Plus, Trash2, Clock, Save, AlertTriangle, Tag } from "lucide-react";
+import { PenLine, Play, Pause, RotateCcw, Plus, Trash2, Clock, Save, AlertTriangle, Tag, BookOpen } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { readPad, padKey } from "@/lib/jotDownPad";
 
 /**
  * Jot-Down: the quick-note pad you scribble on during a round.
@@ -22,7 +24,7 @@ const fmt = (s) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) %
 export default function ProjectJotDown({ project, contentions = [] }) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const storageKey = project?.id ? `jotdown_${project.id}` : "jotdown_local";
+  const storageKey = padKey(project?.id);
 
   const [speechMinutes, setSpeechMinutes] = useState(7);
   const [remaining, setRemaining] = useState(420);
@@ -33,6 +35,15 @@ export default function ProjectJotDown({ project, contentions = [] }) {
   const [priority, setPriority] = useState(1);
   const [contentionId, setContentionId] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // The evidence library is the source pool Jot-Down suggests from.
+  const { data: library = [] } = useQuery({
+    queryKey: ["evidence"],
+    queryFn: async () => {
+      const res = await base44.entities.Evidence.filter({}, { sort: "-created_date", limit: 200 });
+      return res.items || [];
+    },
+  });
 
   // load per-project pad
   useEffect(() => {
@@ -47,6 +58,18 @@ export default function ProjectJotDown({ project, contentions = [] }) {
       }
     } catch { /* ignore bad local data */ }
   }, [storageKey]);
+
+  // notes generated from a contention land in the same pad — pick them up
+  useEffect(() => {
+    const onUpdate = (e) => {
+      const from = e.detail?.projectId;
+      if (from && project?.id && from !== project.id) return;
+      const pad = readPad(project?.id);
+      if (Array.isArray(pad.entries)) setEntries(pad.entries);
+    };
+    window.addEventListener("jotdown-updated", onUpdate);
+    return () => window.removeEventListener("jotdown-updated", onUpdate);
+  }, [project?.id]);
 
   // autosave pad
   useEffect(() => {
@@ -68,23 +91,47 @@ export default function ProjectJotDown({ project, contentions = [] }) {
 
   const total = speechMinutes * 60;
   const undone = entries.filter((e) => !e.done);
-  const perNote = undone.length > 0 ? Math.floor(remaining / undone.length) : 0;
   const pct = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
+
+  // A note's time comes from its own words at ~150 wpm, so a one-word jot reads
+  // as ~1s instead of inheriting whatever is left on the clock.
+  const secFor = (t) => {
+    const words = String(t || "").trim().split(/\s+/).filter(Boolean).length;
+    return Math.max(1, Math.round((words / 150) * 60));
+  };
+  const plannedSec = undone.reduce((a, e) => a + secFor(e.text), 0);
+  const slack = remaining - plannedSec;
 
   const barColor = pct > 0.5 ? "bg-emerald-500" : pct > 0.2 ? "bg-amber-500" : "bg-red-500";
   const hint = remaining === 0
     ? "Time. Stop adding, weigh your top impact, and sit down."
-    : pct > 0.5
-      ? `Comfortable. Roughly ${perNote}s each across ${undone.length} note${undone.length === 1 ? "" : "s"}.`
-      : pct > 0.2
-        ? `Tight. Give the top ${Math.min(2, undone.length)} notes the time and compress the rest.`
-        : "Almost out. Collapse: speak your top 1-2, state the weighing, and drop everything marked Drop first.";
+    : slack < 0
+      ? `${Math.abs(slack)}s over what fits (${plannedSec}s of notes on ${remaining}s). Cut the "Drop first" notes or compress the top one.`
+      : `${slack}s of room left after ${undone.length} note${undone.length === 1 ? "" : "s"} (~${plannedSec}s to say).`;
+
+  const labelFor = (item) => (item.source ? `${item.title} — ${item.source}` : item.title);
 
   const evidenceNames = useMemo(() => {
     const set = new Set(entries.map((e) => e.evidence).filter(Boolean));
+    library.forEach((item) => set.add(labelFor(item)));
     contentions.forEach((c) => (c.evidence || []).forEach((ev) => { if (ev.source) set.add(ev.source); }));
-    return [...set].slice(0, 40);
-  }, [entries, contentions]);
+    return [...set].slice(0, 60);
+  }, [entries, contentions, library]);
+
+  // Saved sources that fit the note being written: words in the note, then the
+  // contention it belongs to. With nothing to match, the newest saves are offered.
+  const evidenceSuggestions = useMemo(() => {
+    const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 3);
+    const scored = library.map((item) => {
+      const hay = `${item.title} ${item.content} ${item.category || ""} ${(item.tags || []).join(" ")}`.toLowerCase();
+      let score = 0;
+      words.forEach((w) => { if (hay.includes(w)) score += 1; });
+      if (contentionId && item.contentionId === contentionId) score += 3;
+      return { id: item.id, label: labelFor(item), score };
+    });
+    const matched = scored.filter((s) => s.score > 0).sort((a, b) => b.score - a.score);
+    return (matched.length > 0 ? matched : scored).slice(0, 5);
+  }, [library, text, contentionId]);
 
   const add = () => {
     if (!text.trim()) return;
@@ -203,6 +250,21 @@ export default function ProjectJotDown({ project, contentions = [] }) {
             <datalist id="jot-evidence-names">
               {evidenceNames.map((n) => <option key={n} value={n} />)}
             </datalist>
+            {evidenceSuggestions.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                <span className="text-[11px] text-slate-400 flex items-center gap-1"><BookOpen className="w-3 h-3" /> Your library:</span>
+                {evidenceSuggestions.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setEvidence(s.label)}
+                    className="text-[11px] bg-primary/5 border border-primary/20 text-primary px-2 py-0.5 rounded-full hover:bg-primary/10 max-w-[13rem] truncate"
+                    title={s.label}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <select
             value={contentionId}
@@ -257,7 +319,7 @@ export default function ProjectJotDown({ project, contentions = [] }) {
                       <span className={`text-[11px] px-1.5 py-0.5 rounded-full border font-semibold ${p.cls}`}>{p.label}</span>
                       {e.evidence && <span className="text-[11px] bg-slate-50 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full flex items-center gap-1"><Tag className="w-2.5 h-2.5" />{e.evidence}</span>}
                       {linked && <span className="text-[11px] text-slate-400 truncate max-w-[12rem]">{linked.title}</span>}
-                      {!e.done && <span className="text-[11px] text-primary font-semibold ml-auto flex items-center gap-1"><Clock className="w-2.5 h-2.5" />~{perNote}s</span>}
+                      {!e.done && <span className="text-[11px] text-primary font-semibold ml-auto flex items-center gap-1"><Clock className="w-2.5 h-2.5" />~{secFor(e.text)}s</span>}
                     </div>
                   </div>
                   <button onClick={() => remove(e.id)} className="p-1 text-slate-300 hover:text-red-400 rounded-lg shrink-0">
