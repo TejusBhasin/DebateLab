@@ -39,7 +39,7 @@ const SCHEMA = {
   required: ["contentions"]
 };
 
-async function generateBatch(count, form, format, aiMode, conferenceText, projectFormat) {
+export async function generateBatch(count, form, format, aiMode, conferenceText, projectFormat) {
   const isCongress = projectFormat === "model_congress";
   const isMUN = projectFormat === "model_un";
   const fmtLabel = isCongress ? "Model Congress" : (isMUN ? "Model UN" : (format === "parliamentary" ? "Parliamentary" : "Public Forum"));

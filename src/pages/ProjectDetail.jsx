@@ -20,6 +20,8 @@ import ProjectContentionGenerator from "@/components/ProjectContentionGenerator"
 import ProjectSpeechGenerator from "@/components/ProjectSpeechGenerator";
 import FeedbackGenerator from "@/components/FeedbackGenerator";
 import ResearchAgent from "@/components/ResearchAgent";
+import ProjectSpeakingMode from "@/components/ProjectSpeakingMode";
+import BothSidesPrompt from "@/components/BothSidesPrompt";
 import DocumentViewer from "@/components/DocumentViewer";
 import ConferenceLinkSelect from "@/components/ConferenceLinkSelect";
 import { buildConferenceContextText } from "@/components/ConferenceContextPicker";
@@ -36,7 +38,7 @@ export default function ProjectDetail() {
   const [collabUserId, setCollabUserId] = useState("");
   const [collabRole, setCollabRole] = useState("viewer");
   const [speakingMode, setSpeakingMode] = useState(false);
-  const [speakIdx, setSpeakIdx] = useState(0);
+  const [sideFilter, setSideFilter] = useState("both");
   const [note, setNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -317,57 +319,23 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
   if (projLoading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" /></div>;
   if (!project) return <div className="p-8 text-center"><p className="text-slate-400">Project not found.</p><Link to="/projects" className="text-primary hover:underline mt-2 block">← Back to Projects</Link></div>;
 
+  // Side prep helpers
+  const PRO_SIDES = ["government", "affirmative", "sponsor", "pro"];
+  const isProSide = (c) => PRO_SIDES.includes((c.side || "").toLowerCase());
+  const sideLabels = project?.format === "parliamentary" ? ["Gov (Prop)", "Opp"]
+    : project?.format === "model_congress" ? ["Sponsor (Pro)", "Opposition (Con)"]
+    : project?.format === "model_un" ? ["Affirmative", "Negative"]
+    : ["Pro", "Con"];
+  const sideFilteredContentions = sideFilter === "both"
+    ? contentions
+    : contentions.filter(c => isProSide(c) === (sideFilter === "pro"));
+  const visibleGroups = sideFilter === "both"
+    ? [[`${sideLabels[0]} Contentions`, contentions.filter(isProSide)], [`${sideLabels[1]} Contentions`, contentions.filter(c => !isProSide(c))]]
+    : [[`${sideLabels[sideFilter === "pro" ? 0 : 1]} Contentions`, sideFilteredContentions]];
+
   // Speaking mode overlay
-  if (speakingMode && contentions.length > 0) {
-    const c = contentions[speakIdx];
-    return (
-      <div className="fixed inset-0 bg-slate-900 text-white z-50 flex flex-col">
-        <div className="flex items-center justify-between px-8 py-4 border-b border-white/10">
-          <span className="text-white/60 text-sm">{speakIdx + 1} / {contentions.length} — {project.name}</span>
-          <button onClick={() => setSpeakingMode(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-8 py-8 max-w-4xl mx-auto w-full">
-          <div className="text-sm text-blue-300 font-medium mb-2 uppercase tracking-wider">{c.side} · {c.format?.replace(/_/g, ' ')}</div>
-          <h1 className="text-3xl font-bold font-heading mb-8">{c.title}</h1>
-          <div className="space-y-6">
-            {[["Claim", c.claim], ["Warrant", c.warrant], ["Impact", c.impact]].map(([label, val]) => val && (
-              <div key={label}>
-                <div className="text-xs font-bold uppercase tracking-wider text-white/40 mb-1">{label}</div>
-                <p className="text-lg leading-relaxed text-white/90">{val}</p>
-              </div>
-            ))}
-            {c.evidence?.length > 0 && (
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-white/40 mb-2">Evidence</div>
-                {c.evidence.map((ev, i) => (
-                  <div key={i} className="bg-white/5 rounded-xl p-4 mb-2">
-                    <p className="text-white/80 text-sm leading-relaxed">{ev.text}</p>
-                    <p className="text-white/40 text-xs mt-1">— {ev.source}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            {c.strategicNotes && (
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-white/40 mb-1">Strategic Notes</div>
-                <p className="text-white/70 text-sm leading-relaxed">{c.strategicNotes}</p>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center justify-center gap-6 px-8 py-6 border-t border-white/10">
-          <button onClick={() => setSpeakIdx(i => Math.max(0, i - 1))} disabled={speakIdx === 0}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 transition-all font-medium">
-            <ChevronLeft className="w-5 h-5" /> Previous
-          </button>
-          <span className="text-white/40 text-sm">{speakIdx + 1} of {contentions.length}</span>
-          <button onClick={() => setSpeakIdx(i => Math.min(contentions.length - 1, i + 1))} disabled={speakIdx === contentions.length - 1}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-30 transition-all font-medium">
-            Next <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-    );
+  if (speakingMode && sideFilteredContentions.length > 0) {
+    return <ProjectSpeakingMode project={project} contentions={sideFilteredContentions} onClose={() => setSpeakingMode(false)} />;
   }
 
   const tabs = [
@@ -405,8 +373,8 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
           </div>
         </div>
         <div className="flex gap-2">
-          {contentions.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => { setSpeakIdx(0); setSpeakingMode(true); }} className="gap-1.5 text-xs hidden sm:flex">
+          {sideFilteredContentions.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setSpeakingMode(true)} className="gap-1.5 text-xs hidden sm:flex">
               <Maximize2 className="w-3.5 h-3.5" /> Speaking Mode
             </Button>
           )}
@@ -427,6 +395,16 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
           <Archive className="w-4 h-4 text-amber-500 shrink-0" />
           <span><strong>Archived project</strong> — this project is frozen. Unarchive to make edits or use the Research Agent.</span>
         </div>
+      )}
+
+      {/* One-time offer: make pre-existing single-sided projects cover both sides */}
+      {!project.isArchived && (
+        <BothSidesPrompt
+          project={project}
+          contentions={contentions}
+          aiMode={getActiveAiMode()}
+          conferenceContext={conferenceContext}
+        />
       )}
 
       {/* Conference Rules/Context link */}
@@ -569,6 +547,22 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
             )}
           </div>
 
+          {/* Prepare for a side */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide mr-1">Prepare for</span>
+            {[
+              { id: "pro", label: sideLabels[0] },
+              { id: "opp", label: sideLabels[1] },
+              { id: "both", label: "Both Sides" },
+            ].map(opt => (
+              <button key={opt.id} onClick={() => setSideFilter(opt.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${sideFilter === opt.id ? "bg-primary text-primary-foreground border-primary" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}>
+                {opt.label}
+              </button>
+            ))}
+            <span className="ml-auto text-xs text-slate-400">{sideFilteredContentions.length} contention{sideFilteredContentions.length !== 1 ? "s" : ""}</span>
+          </div>
+
           {selectedIds.size > 0 && (
             <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5">
               <span className="text-sm text-blue-700 font-medium">{selectedIds.size} selected</span>
@@ -590,60 +584,61 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
             </div>
           ) : (
             <div className="space-y-6">
-              {(() => {
-                const proSides = ["government", "affirmative", "sponsor", "pro"];
-                const fmt = project?.format;
-                const isParli = fmt === "parliamentary";
-                const isCongress = fmt === "model_congress";
-                const isMUN = fmt === "model_un";
-                const proLabel = isParli ? "Gov (Prop) Contentions" : isCongress ? "Sponsor (Pro) Contentions" : isMUN ? "Affirmative Contentions" : "Pro Contentions";
-                const oppLabel = isParli ? "Opp Contentions" : isCongress ? "Opposition (Con) Contentions" : isMUN ? "Negative Contentions" : "Con Contentions";
-                const proList = contentions.filter(c => proSides.includes((c.side || "").toLowerCase()));
-                const oppList = contentions.filter(c => !proSides.includes((c.side || "").toLowerCase()));
-                return [[proLabel, proList], [oppLabel, oppList]].map(([label, list]) => (
-                  <div key={label}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-bold text-slate-900 font-heading text-sm">{label}</h3>
-                      <span className="text-xs font-medium text-slate-400">({list.length})</span>
+              {visibleGroups.map(([label, list]) => (
+                <div key={label}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-bold text-slate-900 font-heading text-sm">{label}</h3>
+                    <span className="text-xs font-medium text-slate-400">({list.length})</span>
+                  </div>
+                  {list.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-5 text-center">
+                      <p className="text-slate-400 text-xs">No contentions on this side yet. Generate some above.</p>
                     </div>
-                    {list.length === 0 ? (
-                      <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-5 text-center">
-                        <p className="text-slate-400 text-xs">No contentions on this side yet. Generate some above.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {list.map(c => (
-                          <div key={c.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition-all ${selectedIds.has(c.id) ? "border-primary ring-1 ring-primary/20" : "border-slate-200"}`}>
-                            <div className="flex items-start gap-3">
-                              <button onClick={() => toggleSelect(c.id)} className="mt-0.5 shrink-0">
-                                {selectedIds.has(c.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-slate-300 hover:text-slate-500" />}
-                              </button>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <h3 className="font-bold text-slate-900 font-heading text-sm">{c.title}</h3>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {c.difficulty && <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${DIFF_COLORS[c.difficulty] || "bg-slate-100 text-slate-600"}`}>{c.difficulty}</span>}
-                                    <button onClick={() => deleteContention.mutate(c.id)} className="p-1 hover:bg-red-50 rounded-lg text-slate-300 hover:text-red-400 transition-colors">
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {list.map(c => (
+                        <div key={c.id} className={`bg-white rounded-2xl border shadow-sm p-5 transition-all ${selectedIds.has(c.id) ? "border-primary ring-1 ring-primary/20" : "border-slate-200"}`}>
+                          <div className="flex items-start gap-3">
+                            <button onClick={() => toggleSelect(c.id)} className="mt-0.5 shrink-0">
+                              {selectedIds.has(c.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4 text-slate-300 hover:text-slate-500" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <h3 className="font-bold text-slate-900 font-heading text-sm">{c.title}</h3>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {c.difficulty && <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${DIFF_COLORS[c.difficulty] || "bg-slate-100 text-slate-600"}`}>{c.difficulty}</span>}
+                                  <button onClick={() => deleteContention.mutate(c.id)} className="p-1 hover:bg-red-50 rounded-lg text-slate-300 hover:text-red-400 transition-colors">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
-                                {c.claim && <p className="text-xs text-slate-600 leading-relaxed mb-1"><span className="font-semibold text-slate-400">Claim:</span> {c.claim}</p>}
-                                {c.impact && <p className="text-xs text-slate-500 leading-relaxed"><span className="font-semibold text-slate-400">Impact:</span> {c.impact}</p>}
-                                {c.evidence?.length > 0 && (
-                                  <div className="mt-2 flex items-center gap-1 text-xs text-slate-400">
-                                    <BookOpen className="w-3 h-3" /> {c.evidence.length} evidence piece{c.evidence.length !== 1 ? "s" : ""}
-                                  </div>
-                                )}
                               </div>
+                              {c.claim && <p className="text-xs text-slate-600 leading-relaxed mb-1"><span className="font-semibold text-slate-400">Claim:</span> {c.claim}</p>}
+                              {c.impact && <p className="text-xs text-slate-500 leading-relaxed"><span className="font-semibold text-slate-400">Impact:</span> {c.impact}</p>}
+                              {c.evidence?.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  {c.evidence.map((ev, i) => (
+                                    <div key={i} className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                                      <p className="text-xs text-slate-700 leading-relaxed italic">"{ev.text}"</p>
+                                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                        <span className="text-[11px] font-medium text-slate-500">— {ev.source}</span>
+                                        {ev.sourceUrl && (
+                                          <a href={ev.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline">
+                                            <ExternalLink className="w-3 h-3" /> Source
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ));
-              })()}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>

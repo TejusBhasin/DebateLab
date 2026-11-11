@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Brain, FileText, Target, Users, X, ChevronRight, Check } from "lucide-react";
+import { Brain, FileText, Target, Users, X, ChevronRight, Check, Scale, Mic } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -19,8 +19,20 @@ const TOUR_STEPS = [
   {
     id: "contentions",
     title: "Generate Contentions",
-    desc: "Enter your resolution and let our AI generate complete, tournament-ready arguments with claims, warrants, and impacts.",
+    desc: "Enter your resolution and let our AI generate complete, tournament-ready arguments with claims, warrants, impacts, and cited evidence — all shown right on your contentions tab.",
     icon: <FileText className="w-10 h-10 text-indigo-500" />
+  },
+  {
+    id: "both_sides",
+    title: "Prepare Both Sides",
+    desc: "Each project holds both sides — pick Gov, Opp, or Both to see everything for that side in one place, so you can prep a round from either bench.",
+    icon: <Scale className="w-10 h-10 text-teal-500" />
+  },
+  {
+    id: "speaking",
+    title: "Speaking Mode",
+    desc: "Rehearse full-screen, or turn on Split to view two contentions side by side at 1/4, 1/2, or 3/4 width and flow the round live.",
+    icon: <Mic className="w-10 h-10 text-rose-500" />
   },
   {
     id: "practice",
