@@ -142,11 +142,12 @@ export default function Layout() {
                 ["/model-un", <Globe className="w-3.5 h-3.5" />, unMode ? "UN" : "MUN"],
                 ["/model-congress", <FileText className="w-3.5 h-3.5" />, "Congress"],
                 ["/research", <Search className="w-3.5 h-3.5" />, "Research"],
+                ["/toolkit", <Target className="w-3.5 h-3.5" />, "Toolkit"],
                 ["/other-documents", <FileText className="w-3.5 h-3.5" />, "Other Docs"],
                 ["/projects", <Folder className="w-3.5 h-3.5" />, "Projects"],
               ["/speech-generator", <Megaphone className="w-3.5 h-3.5" />, "Speech"],
               ].map(([to, icon, label]) => (
-                <Link key={to} to={to} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${['/other-documents', '/ai-editor', '/speech-generator'].includes(to) ? 'hidden xl:flex' : ''} ${active(to) ? 'bg-primary text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
+                <Link key={to} to={to} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${['/other-documents', '/ai-editor', '/speech-generator', '/toolkit'].includes(to) ? 'hidden xl:flex' : ''} ${active(to) ? 'bg-primary text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
                   {icon}{label}
                 </Link>
               ))}
@@ -297,6 +298,7 @@ export default function Layout() {
               ["/model-un", Globe, unMode ? "UN" : "Model UN"],
               ["/model-congress", FileText, "Congress"],
               ["/research", Search, "Research"],
+              ["/toolkit", Target, "Debate Toolkit"],
               ["/other-documents", FileText, "Other Docs"],
               ["/formats", LayoutGrid, "Formats"],
               ["/office-hours", MessageSquare, "Office Hours"],

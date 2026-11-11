@@ -24,6 +24,11 @@ import ProjectSpeakingMode from "@/components/ProjectSpeakingMode";
 import BothSidesPrompt from "@/components/BothSidesPrompt";
 import DocumentViewer from "@/components/DocumentViewer";
 import ConferenceLinkSelect from "@/components/ConferenceLinkSelect";
+import TechniquesLibrary from "@/components/TechniquesLibrary";
+import CounterCaseBuilder from "@/components/CounterCaseBuilder";
+import QuickCopyDialog from "@/components/QuickCopyDialog";
+import ExportDocButton from "@/components/ExportDocButton";
+import { projectToMarkdown } from "@/lib/exportDoc";
 import { buildConferenceContextText } from "@/components/ConferenceContextPicker";
 
 const DIFF_COLORS = { beginner: "bg-green-100 text-green-700", intermediate: "bg-blue-100 text-blue-700", advanced: "bg-purple-100 text-purple-700", expert: "bg-red-100 text-red-700" };
@@ -344,6 +349,8 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
     { id: "speech", icon: Mic, label: "Speech" },
     { id: "rebuttals", icon: ShieldAlert, label: "Rebuttal Hub" },
     { id: "qna", icon: HelpCircle, label: "Q&A Prep" },
+    { id: "techniques", icon: Wand2, label: "Techniques" },
+    { id: "counter", icon: ShieldAlert, label: "Counter-Case" },
     { id: "feedback", icon: Lightbulb, label: "Feedback" },
     { id: "notes", icon: StickyNote, label: "Notes" },
     { id: "chat", icon: MessageSquare, label: "AI Chats" },
@@ -378,6 +385,7 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
               <Maximize2 className="w-3.5 h-3.5" /> Speaking Mode
             </Button>
           )}
+          <ExportDocButton title={project.name} getMarkdown={() => projectToMarkdown(project, contentions, otherDocs)} label="Export Project" />
           <Button variant="outline" size="sm"
             onClick={() => archiveProject.mutate(!project.isArchived)}
             className="gap-1.5 text-xs hidden sm:flex">
@@ -560,7 +568,13 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
                 {opt.label}
               </button>
             ))}
-            <span className="ml-auto text-xs text-slate-400">{sideFilteredContentions.length} contention{sideFilteredContentions.length !== 1 ? "s" : ""}</span>
+            {sideFilteredContentions.length > 0 && (
+              <span className="flex items-center gap-1.5 ml-auto">
+                <QuickCopyDialog contentions={sideFilteredContentions} title={`Quick Copy: ${project.name}`} label="Quick Copy" />
+                <ExportDocButton title={`${project.name} Contentions`} getMarkdown={() => projectToMarkdown({ name: project.name }, sideFilteredContentions, [])} label="Docs" />
+              </span>
+            )}
+            <span className="text-xs text-slate-400">{sideFilteredContentions.length} contention{sideFilteredContentions.length !== 1 ? "s" : ""}</span>
           </div>
 
           {selectedIds.size > 0 && (
@@ -642,6 +656,11 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
             </div>
           )}
         </div>
+      )}
+
+      {tab === "techniques" && <TechniquesLibrary />}
+      {tab === "counter" && (
+        <CounterCaseBuilder project={project} onSaved={() => queryClient.invalidateQueries({ queryKey: ['project_other_documents', id] })} />
       )}
 
       {/* Q&A Prep tab */}

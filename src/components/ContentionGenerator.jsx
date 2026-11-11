@@ -8,6 +8,9 @@ import { Loader2, Sparkles, Save, BookOpen, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import ContentionCard from "./ContentionCard";
+import QuickCopyDialog from "@/components/QuickCopyDialog";
+import ExportDocButton from "@/components/ExportDocButton";
+import { contentionsToMarkdown } from "@/lib/exportDoc";
 import SaveToProjectDialog from "./SaveToProjectDialog";
 import ContextInput from "./ContextInput";
 import ConferenceContextPicker, { buildConferenceContextText } from "./ConferenceContextPicker";
@@ -171,6 +174,12 @@ export default function ContentionGenerator({ format = "parliamentary" }) {
 
       {activeTab === "saved" && (
         <div className="space-y-4">
+          {savedContentions.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <QuickCopyDialog contentions={savedContentions} title="Quick Copy: All Saved Contentions" label="Quick Copy all" />
+              <ExportDocButton title="My Contentions" getMarkdown={() => contentionsToMarkdown(savedContentions, 2)} label="Export all to Docs" />
+            </div>
+          )}
           {savedContentions.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
               <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-3" />

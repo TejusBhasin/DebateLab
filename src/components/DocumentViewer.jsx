@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import ExportDocButton from "@/components/ExportDocButton";
 import { Copy, Download, Plus, X, Maximize2, Minimize2, Pencil, MessageSquare, Save, Loader2, Send } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Textarea } from "@/components/ui/textarea";
@@ -189,6 +190,7 @@ Apply the requested edit and return the COMPLETE updated document. Structure you
             {mode === "view" && onUpdate && <button onClick={() => { setMode("chat"); setChatMessages([]); setPendingDoc(null); }} className="flex items-center gap-1.5 text-xs text-white bg-violet-600 hover:bg-violet-700 px-3 py-1.5 rounded-lg transition-colors"><MessageSquare className="w-3.5 h-3.5" /> AI Edit</button>}
             {mode !== "view" && <button onClick={() => { setMode("view"); setEditFields(null); setPendingDoc(null); }} className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors">← Back</button>}
             {mode === "view" && <button onClick={copy} title="Copy" className="flex items-center text-slate-500 hover:text-primary bg-slate-50 hover:bg-slate-100 p-1.5 rounded-lg transition-colors"><Copy className="w-4 h-4" /></button>}
+            {mode === "view" && <ExportDocButton title={doc?.title || "Document"} getMarkdown={() => doc?.content || ""} label="Docs" showDownload={false} />}
             {mode === "view" && <button onClick={download} title="Download .txt" className="flex items-center text-slate-500 hover:text-primary bg-slate-50 hover:bg-slate-100 p-1.5 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>}
             {mode === "view" && <button onClick={() => setFullscreen(f => !f)} title={fullscreen ? "Exit fullscreen" : "Fullscreen"} className="flex items-center text-slate-500 hover:text-primary bg-slate-50 hover:bg-slate-100 p-1.5 rounded-lg transition-colors">{fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</button>}
             {mode === "view" && onAddContention && <button onClick={() => onAddContention(doc)} className="flex items-center gap-1 text-xs text-white bg-primary hover:bg-primary/90 px-2.5 py-1.5 rounded-lg transition-colors"><Plus className="w-3.5 h-3.5" /> Contention</button>}

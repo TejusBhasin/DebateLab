@@ -3,6 +3,9 @@ import { ChevronDown, ChevronUp, Save, ExternalLink, Star, Share2, Trash2 } from
 import { Button } from "@/components/ui/button";
 import { haptic, shareContent } from "@/lib/native";
 import { useToast } from "@/components/ui/use-toast";
+import QuickCopyDialog from "@/components/QuickCopyDialog";
+import ExportDocButton from "@/components/ExportDocButton";
+import { contentionToMarkdown } from "@/lib/exportDoc";
 
 const Section = ({ label, children, color = "bg-slate-50" }) => (
   <div className={`${color} rounded-xl p-4`}>
@@ -38,6 +41,8 @@ export default function ContentionCard({ contention: c, onSave, saving, defaultE
           <Button variant="outline" size="sm" onClick={handleShare} className="gap-1.5 text-xs h-8">
             <Share2 className="w-3 h-3" /> Share
           </Button>
+          <QuickCopyDialog contentions={[c]} title={`Quick Copy: ${c.title}`} iconOnly />
+          <ExportDocButton title={c.title || "Contention"} getMarkdown={() => contentionToMarkdown(c, 2)} label="Docs" showDownload={false} />
           <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onSave(); }} disabled={saving} className="gap-1.5 text-xs h-8">
             <Save className="w-3 h-3" /> Save
           </Button>

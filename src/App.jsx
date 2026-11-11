@@ -48,6 +48,7 @@ import OtherDocuments from './pages/OtherDocuments';
 import Research from './pages/Research';
 import SpeechGenerator from './pages/SpeechGenerator';
 import Feedback from './pages/Feedback';
+import DebateToolkit from './pages/DebateToolkit';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated } = useAuth();
@@ -140,6 +141,7 @@ const AuthenticatedApp = () => {
           <Route path="/research" element={<Research />} />
           <Route path="/speech-generator" element={<SpeechGenerator />} />
           <Route path="/feedback" element={<Feedback />} />
+          <Route path="/toolkit" element={<DebateToolkit />} />
         </Route>
         <Route path="*" element={<PageNotFound />} />
       </Routes>
