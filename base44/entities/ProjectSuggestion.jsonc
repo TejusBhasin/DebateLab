@@ -18,6 +18,11 @@
       "type": "string",
       "maxLength": 4000000
     },
+    "technique": {
+      "type": "string",
+      "description": "Optional debate technique the coach is recommending (e.g. 'Impact turn', 'Weighing')",
+      "maxLength": 4000000
+    },
     "userId": {
       "type": "string",
       "maxLength": 4000000

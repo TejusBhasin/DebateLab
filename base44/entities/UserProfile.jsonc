@@ -93,6 +93,11 @@
       "type": "boolean",
       "default": true
     },
+    "coachSuggestionsEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatic (scheduled) AI Coach suggestions. Off = no automatic suggestions; on-demand generation still works."
+    },
     "themeMode": {
       "type": "string",
       "enum": [

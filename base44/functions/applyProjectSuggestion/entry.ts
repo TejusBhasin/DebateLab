@@ -48,6 +48,7 @@ SIDE: ${project.side || 'N/A'}
 APPROVED SUGGESTION:
 Title: ${suggestion.title}
 Advice: ${suggestion.description}
+${suggestion.technique ? `Technique to apply by name: ${suggestion.technique}` : ''}
 
 CURRENT PROJECT MATERIAL:
 ${contextParts.join('\n') || 'No material saved yet — write the new material this suggestion calls for.'}
@@ -77,7 +78,7 @@ Reply ONLY with valid JSON exactly matching: {"title": "short document title", "
 
     await base44.entities.OtherDocument.create({
       title: res.title || `Applied Fix — ${suggestion.title}`,
-      docLabel: 'AI Coach Fix',
+      docLabel: suggestion.technique ? `AI Coach Fix — ${suggestion.technique}` : 'AI Coach Fix',
       description: suggestion.description || suggestion.title,
       content: res.content,
       projectId: project.id,

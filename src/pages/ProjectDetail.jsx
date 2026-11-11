@@ -658,7 +658,9 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
         </div>
       )}
 
-      {tab === "techniques" && <TechniquesLibrary />}
+      {tab === "techniques" && (
+        <TechniquesLibrary project={project} onApplied={() => queryClient.invalidateQueries({ queryKey: ['project_other_documents', id] })} />
+      )}
       {tab === "counter" && (
         <CounterCaseBuilder project={project} onSaved={() => queryClient.invalidateQueries({ queryKey: ['project_other_documents', id] })} />
       )}

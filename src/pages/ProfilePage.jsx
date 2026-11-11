@@ -32,7 +32,8 @@ export default function ProfilePage() {
     defaultMinKeyFacts: 3,
     defaultMinLogicPoints: 3,
     defaultMinContentions: 2,
-    delegateOfUN: false
+    delegateOfUN: false,
+    coachSuggestionsEnabled: true
   });
   const [saved, setSaved] = useState(false);
   const [activeSection, setActiveSection] = useState("profile");
@@ -117,7 +118,8 @@ export default function ProfilePage() {
         defaultMinKeyFacts: profile.defaultMinKeyFacts ?? 3,
         defaultMinLogicPoints: profile.defaultMinLogicPoints ?? 3,
         defaultMinContentions: profile.defaultMinContentions ?? 2,
-        delegateOfUN: profile.delegateOfUN === true
+        delegateOfUN: profile.delegateOfUN === true,
+        coachSuggestionsEnabled: profile.coachSuggestionsEnabled !== false
       });
       if (profile.themeMode) {
         setThemeMode(profile.themeMode);
@@ -327,6 +329,22 @@ export default function ProfilePage() {
                           className="sr-only peer" 
                           checked={form.learnTabEnabled}
                           onChange={(e) => setForm({ ...form, learnTabEnabled: e.target.checked })}
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">Automatic Coach Suggestions</div>
+                        <div className="text-xs text-slate-500">Daily AI coaching recommendations for your projects. Off means none are created automatically.</div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={form.coachSuggestionsEnabled !== false}
+                          onChange={(e) => setForm({ ...form, coachSuggestionsEnabled: e.target.checked })}
                         />
                         <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>

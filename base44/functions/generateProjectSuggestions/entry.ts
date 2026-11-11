@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.32';
+import { techniquePromptList, autoSuggestionsDisabled } from '../../shared/techniques.ts';
 
 const MAX_PENDING_QUEUE = 10;
 
@@ -53,6 +54,9 @@ Deno.serve(async (req) => {
             const ownerId = project.created_by_id || project.ownerUserId;
             if (!ownerId) continue;
 
+            // Respect the user's "automatic coach suggestions" preference
+            if (await autoSuggestionsDisabled(base44, ownerId)) continue;
+
             // Respect the per-user pending queue cap
             if (pendingCountByUser[ownerId] === undefined) {
                 const pending = await base44.asServiceRole.entities.ProjectSuggestion.filter({ userId: ownerId, status: 'pending' });
@@ -77,17 +81,22 @@ async function generateForProject(base44, project, maxSuggestions) {
 
     const contentions = await base44.asServiceRole.entities.Contention.filter({ projectId: project.id }).catch(() => []);
 
-    const prompt = `Review this debate project and suggest up to ${Math.min(2, maxSuggestions)} specific improvements, fixes, or strategy updates. Focus on arguments, evidence, or flow.
+    const prompt = `You are an elite debate coach. Review this project and suggest up to ${Math.min(2, maxSuggestions)} specific improvements, fixes, or strategy updates.
+
+Prefer suggestions that apply a named debate technique to this project's actual material (e.g. "Add an impact turn to your economy contention", "Pre-empt their strongest mitigate", "Weigh via timeframe"). Techniques you can use:
+${techniquePromptList()}
+
 Project Name: ${project.name}
+Format: ${project.format || 'N/A'}
 Description: ${project.description || 'N/A'}
 Resolution: ${project.resolution || 'N/A'}
 Side: ${project.side || 'N/A'}
 
 Contentions:
-${contentions.map(c => `- ${c.title}`).join('\n')}
+${contentions.map(c => `- ${c.title}${c.side ? ` (${c.side})` : ''}`).join('\n') || 'none yet'}
 
 Reply ONLY with valid JSON exactly matching this schema:
-{"suggestions": [{"title": "Short title", "description": "Detailed actionable advice on what to fix or update"}]}
+{"suggestions": [{"title": "Short title", "description": "Detailed actionable advice on what to fix or update", "technique": "Exact technique name from the list above, or empty string"}]}
 `;
 
     const res = await base44.asServiceRole.integrations.Core.InvokeLLM({
@@ -101,7 +110,8 @@ Reply ONLY with valid JSON exactly matching this schema:
                         type: "object",
                         properties: {
                             title: { type: "string" },
-                            description: { type: "string" }
+                            description: { type: "string" },
+                            technique: { type: "string" }
                         },
                         required: ["title", "description"]
                     }
@@ -121,6 +131,7 @@ Reply ONLY with valid JSON exactly matching this schema:
             projectName: project.name,
             title: sug.title,
             description: sug.description,
+            technique: sug.technique || "",
             userId: ownerId,
             created_by_id: ownerId, // Ensure user can see it
             status: "pending"
