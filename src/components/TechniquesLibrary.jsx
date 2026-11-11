@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { TECHNIQUE_GROUPS } from "@/lib/debateTechniques";
 import ApplyTechniqueDialog from "@/components/ApplyTechniqueDialog";
+import AutoApplyTechniques from "@/components/AutoApplyTechniques";
 
 export default function TechniquesLibrary({ project, onApplied }) {
   const [q, setQ] = useState("");
@@ -19,6 +20,7 @@ export default function TechniquesLibrary({ project, onApplied }) {
 
   return (
     <div className="space-y-6">
+      <AutoApplyTechniques project={project} onApplied={onApplied} />
       <div className="relative">
         <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search techniques (e.g. turn, weigh, pre-empt)..." className="pl-9 bg-white" />

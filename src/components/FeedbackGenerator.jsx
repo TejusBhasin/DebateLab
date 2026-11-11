@@ -1,10 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Loader2, Sparkles, Save, Upload, ClipboardPaste, FileText, Copy } from "lucide-react";
+import { Loader2, Sparkles, Save, Upload, ClipboardPaste, FileText, Copy, BookOpen } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import ReactMarkdown from "react-markdown";
@@ -23,7 +23,7 @@ const FEEDBACK_SCHEMA = {
   required: ["overallScore", "summary", "strengths", "weaknesses", "detailedFeedback", "actionItems"],
 };
 
-export default function FeedbackGenerator({ project, documents = [], onSaved }) {
+export default function FeedbackGenerator({ project, documents = [], contentions = [], onSaved }) {
   const projectId = project?.id || null;
   const isMUN = project?.format === "model_un";
   const { user } = useAuth();
@@ -31,7 +31,8 @@ export default function FeedbackGenerator({ project, documents = [], onSaved }) 
   const queryClient = useQueryClient();
   const fileRef = useRef(null);
 
-  const [inputMode, setInputMode] = useState(projectId ? "select" : "paste");
+  const [inputMode, setInputMode] = useState(projectId ? "contentions" : "paste");
+  const [selectedContIds, setSelectedContIds] = useState(new Set());
   const [pastedText, setPastedText] = useState("");
   const [selectedDocId, setSelectedDocId] = useState("");
   const [uploadedText, setUploadedText] = useState("");
@@ -53,6 +54,33 @@ export default function FeedbackGenerator({ project, documents = [], onSaved }) 
   const [pickedProjectId, setPickedProjectId] = useState("");
 
   const projectDocs = documents;
+
+  // Start with every contention selected — the usual ask is "grade my case".
+  useEffect(() => {
+    setSelectedContIds(prev => (prev.size > 0 ? prev : new Set(contentions.map(c => c.id))));
+  }, [contentions]);
+
+  const toggleContention = (cid) => {
+    setSelectedContIds(prev => {
+      const next = new Set(prev);
+      if (next.has(cid)) next.delete(cid);
+      else next.add(cid);
+      return next;
+    });
+  };
+
+  const contentionText = () => contentions
+    .filter(c => selectedContIds.has(c.id))
+    .map((c, i) => [
+      `${i + 1}. ${c.title}${c.side ? ` (${c.side})` : ""}`,
+      c.claim && `Claim: ${c.claim}`,
+      c.warrant && `Warrant: ${c.warrant}`,
+      c.impact && `Impact: ${c.impact}`,
+      ...(c.evidence || []).filter(e => e.text).map(e => `Evidence: "${e.text}"${e.source ? ` — ${e.source}` : ""}`),
+      ...(c.rebuttalResponses || []).map(r => `Answer prepared: ${r}`),
+      ...(c.crossfireQuestions || []).map(q => `Crossfire question: ${q}`),
+    ].filter(Boolean).join("\n"))
+    .join("\n\n");
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -79,6 +107,7 @@ export default function FeedbackGenerator({ project, documents = [], onSaved }) 
   };
 
   const getSourceText = () => {
+    if (inputMode === "contentions") return contentionText();
     if (inputMode === "paste") return pastedText.trim();
     if (inputMode === "select") {
       const doc = projectDocs.find(d => d.id === selectedDocId);
@@ -91,7 +120,10 @@ export default function FeedbackGenerator({ project, documents = [], onSaved }) 
   const generate = async () => {
     const sourceText = getSourceText();
     if (!sourceText) {
-      toast({ title: "Add a document to evaluate first.", variant: "destructive" });
+      toast({
+        title: inputMode === "contentions" ? "Select at least one contention to review." : "Add a document to evaluate first.",
+        variant: "destructive",
+      });
       return;
     }
     setGenerating(true);
@@ -188,7 +220,10 @@ ${(feedback.actionItems || []).map(a => `- ${a}`).join("\n")}`;
   const modeBtns = [
     { id: "paste", label: "Paste Text", icon: ClipboardPaste },
     { id: "upload", label: "Upload File", icon: Upload },
-    ...(projectId ? [{ id: "select", label: "From Project Docs", icon: FileText }] : []),
+    ...(projectId ? [
+      { id: "contentions", label: "From Contentions", icon: BookOpen },
+      { id: "select", label: "From Project Docs", icon: FileText },
+    ] : []),
   ];
 
   return (
@@ -250,6 +285,25 @@ ${(feedback.actionItems || []).map(a => `- ${a}`).join("\n")}`;
               </div>
             ) : (
               <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} className="text-xs">Choose file (PDF, DOC, TXT)</Button>
+            )}
+          </div>
+        )}
+
+        {inputMode === "contentions" && (
+          <div>
+            {contentions.length === 0 ? (
+              <p className="text-sm text-slate-400 italic py-4 text-center">No contentions in this project yet. Generate some in the Contentions tab first.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                {contentions.map(c => (
+                  <button key={c.id} onClick={() => toggleContention(c.id)} className="w-full flex items-center gap-2 text-left p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                    <input type="checkbox" readOnly checked={selectedContIds.has(c.id)} className="w-4 h-4 accent-primary shrink-0 pointer-events-none" />
+                    <span className="text-sm text-slate-700 truncate">{c.title}</span>
+                    {c.side && <span className="text-xs text-slate-400 shrink-0 ml-auto">{c.side}</span>}
+                  </button>
+                ))}
+                <p className="text-xs text-slate-400 px-2 pt-1">{selectedContIds.size} of {contentions.length} selected — feedback judges the case as a whole.</p>
+              </div>
             )}
           </div>
         )}

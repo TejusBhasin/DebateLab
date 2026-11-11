@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ScrollText, Clock, BookOpen, ChevronRight, X, Maximize2, Minimize2, RefreshCw, CheckSquare, Square, FileText, Gavel } from "lucide-react";
+import { ScrollText, Clock, ChevronRight, X, Maximize2, RefreshCw, CheckSquare, Square, FileText, Gavel, Star } from "lucide-react";
 
 /**
  * A scrollable "flow" view structured for a timed speech:
@@ -13,6 +13,24 @@ export default function ProjectFlowTab({ project, contentions, rebuttals, otherD
   const [selectedDocIds, setSelectedDocIds] = useState(new Set());
   const [showSelector, setShowSelector] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // How much a contention is worth speaking about: developed impacts and evidence
+  // (what a judge can vote on) outweigh a bare claim.
+  const scoreContention = (c) => {
+    let s = 0;
+    if ((c.impact || "").length > 40) s += 3;
+    if ((c.warrant || "").length > 80) s += 1;
+    if ((c.evidence || []).some(e => e.text)) s += 2;
+    if (Object.values(c.weighingMechanisms || {}).some(v => v && String(v).trim())) s += 2;
+    if ((c.rebuttalResponses || []).length > 0) s += 2;
+    if ((c.crossfireQuestions || []).length > 0) s += 1;
+    if (c.difficulty === "advanced" || c.difficulty === "expert") s += 1;
+    return s;
+  };
+  const ranked = [...contentions].sort((a, b) => scoreContention(b) - scoreContention(a));
+  const keyCount = Math.max(1, Math.min(ranked.length || 1, Math.round(speechMinutes / 2.5)));
+  const keyIds = new Set(ranked.slice(0, keyCount).map(c => c.id));
+  const autoPickKey = () => setSelectedContIds(new Set(keyIds));
 
   const isCongress = project?.format === "model_congress";
   const isParli = project?.format === "parliamentary";
@@ -29,7 +47,7 @@ export default function ProjectFlowTab({ project, contentions, rebuttals, otherD
   useEffect(() => {
     if (!contentions || contentions.length === 0) return;
     setSelectedContIds(prev => {
-      if (!prev || prev.size === 0) return new Set(contentions.map(c => c.id));
+      if (!prev || prev.size === 0) return new Set(ranked.slice(0, keyCount).map(c => c.id));
       const next = new Set();
       contentions.forEach(c => { if (prev.has(c.id)) next.add(c.id); });
       if (next.size === 0) return new Set(contentions.map(c => c.id)); // min 1
@@ -95,14 +113,20 @@ export default function ProjectFlowTab({ project, contentions, rebuttals, otherD
         </h4>
         <span className="text-xs text-slate-400">{selectedContentions.length} contention{selectedContentions.length !== 1 ? 's' : ''}{selectedDocs.length > 0 ? ` + ${selectedDocs.length} doc${selectedDocs.length !== 1 ? 's' : ''}` : ''} · min 1</span>
       </div>
+      {contentions.length > 0 && (
+        <button onClick={autoPickKey} className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+          <Star className="w-3.5 h-3.5" /> Auto-pick the {keyCount} most important
+        </button>
+      )}
       {contentions.length === 0 && otherDocs.length === 0 ? (
         <p className="text-xs text-slate-400 italic">No contentions or documents yet. Generate contentions or add documents first.</p>
       ) : (
         <div className="space-y-1.5 max-h-48 overflow-y-auto">
-          {contentions.map(c => (
+          {ranked.map(c => (
             <button key={c.id} onClick={() => toggleContention(c.id)} className="w-full flex items-center gap-2 text-left p-2 rounded-lg hover:bg-slate-50 transition-colors">
               {selectedContIds?.has(c.id) ? <CheckSquare className="w-4 h-4 text-primary shrink-0" /> : <Square className="w-4 h-4 text-slate-300 shrink-0" />}
               <span className="text-sm text-slate-700 truncate">{c.title}</span>
+              {keyIds.has(c.id) && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full shrink-0">Key</span>}
               <span className="text-xs text-slate-400 shrink-0 ml-auto">{labels.contentionWord}</span>
             </button>
           ))}
@@ -228,6 +252,9 @@ export default function ProjectFlowTab({ project, contentions, rebuttals, otherD
         <div className="flex items-center gap-2">
           <button onClick={() => setShowSelector(!showSelector)} className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-primary font-medium px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
             <FileText className="w-3.5 h-3.5" /> Select Docs
+          </button>
+          <button onClick={autoPickKey} className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium px-2.5 py-1.5 rounded-lg hover:bg-amber-50 transition-colors">
+            <Star className="w-3.5 h-3.5" /> Key {keyCount}
           </button>
           <button onClick={handleRefresh} disabled={!onRefresh || refreshing} title="Refresh contentions and data" className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-primary font-medium px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40">
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Refresh

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, BookOpen, MessageSquare, StickyNote, Trash2, Plus, ChevronLeft, ChevronRight, ChevronDown, X, Maximize2, Sparkles, Loader2, CheckSquare, Square, Globe, Archive, ArchiveRestore, ShieldAlert, FileText, Users, Activity, Check, Copy, ScrollText, Lightbulb, ExternalLink, Scale, Wand2, FileDown, Mic, HelpCircle } from "lucide-react";
+import { ArrowLeft, BookOpen, MessageSquare, StickyNote, Trash2, Plus, ChevronLeft, ChevronRight, ChevronDown, X, Maximize2, Sparkles, Loader2, CheckSquare, Square, Globe, Archive, ArchiveRestore, ShieldAlert, FileText, Users, Activity, Check, Copy, ScrollText, Lightbulb, ExternalLink, Scale, Wand2, FileDown, Mic, HelpCircle, PenLine } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import ReactMarkdown from "react-markdown";
@@ -16,6 +16,7 @@ import OtherDocGenerator from "@/components/OtherDocGenerator";
 import QnAPrepGenerator from "@/components/QnAPrepGenerator";
 import ProjectContextCard from "@/components/ProjectContextCard";
 import ProjectFlowTab from "@/components/ProjectFlowTab";
+import ProjectJotDown from "@/components/ProjectJotDown";
 import ProjectContentionGenerator from "@/components/ProjectContentionGenerator";
 import ProjectSpeechGenerator from "@/components/ProjectSpeechGenerator";
 import FeedbackGenerator from "@/components/FeedbackGenerator";
@@ -346,6 +347,7 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
   const tabs = [
     { id: "contentions", icon: BookOpen, label: `Contentions (${contentions.length})` },
     { id: "flow", icon: ScrollText, label: "Flow" },
+    { id: "jot", icon: PenLine, label: "Jot-Down" },
     { id: "speech", icon: Mic, label: "Speech" },
     { id: "rebuttals", icon: ShieldAlert, label: "Rebuttal Hub" },
     { id: "qna", icon: HelpCircle, label: "Q&A Prep" },
@@ -466,6 +468,11 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
             onRefresh={() => queryClient.invalidateQueries({ queryKey: ['project_contentions', id] })}
           />
         </div>
+      )}
+
+      {/* Jot-Down tab */}
+      {tab === "jot" && (
+        <ProjectJotDown project={project} contentions={sideFilteredContentions} />
       )}
 
       {/* Speech tab */}
@@ -680,6 +687,7 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
         <FeedbackGenerator
           project={project}
           documents={otherDocs}
+          contentions={sideFilteredContentions}
           onSaved={() => queryClient.invalidateQueries({ queryKey: ['project_other_documents', id] })}
         />
       )}
