@@ -8,6 +8,52 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import ReactMarkdown from "react-markdown";
 import { MUN_GUIDE_SUMMARY } from "@/lib/munGuide";
+import AIChatContentionActions from "@/components/AIChatContentionActions";
+
+const EDITOR_SCHEMA = {
+  type: "object",
+  properties: {
+    reply: { type: "string" },
+    actions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["create", "update", "delete"] },
+          contentionId: { type: "string" },
+          reason: { type: "string" },
+          title: { type: "string" },
+          side: { type: "string" },
+          claim: { type: "string" },
+          warrant: { type: "string" },
+          impact: { type: "string" },
+          changes: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              side: { type: "string" },
+              claim: { type: "string" },
+              warrant: { type: "string" },
+              impact: { type: "string" },
+              strategicNotes: { type: "string" },
+            },
+          },
+        },
+        required: ["type"],
+      },
+    },
+  },
+  required: ["reply", "actions"],
+};
+
+const parseActions = (raw) => {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 export default function ProjectAIChats({ project, contentions, conferenceContext = "" }) {
   const queryClient = useQueryClient();
@@ -78,6 +124,26 @@ Provide specific, actionable coaching advice.`;
           promptText += `\n\nYou are coaching a Model UN delegate. Use this MUN mastery framework to ground your advice:\n\n${MUN_GUIDE_SUMMARY}`;
         }
         if (conferenceContext) promptText += `\n\n${conferenceContext}\nFollow the conference rules/context above.`;
+      } else if (session?.feature === 'editor') {
+        const list = contentions
+          .map((c) => `id=${c.id} | side=${c.side || "unset"} | ${c.title} :: claim: ${(c.claim || "").slice(0, 180)} :: warrant: ${(c.warrant || "").slice(0, 180)} :: impact: ${(c.impact || "").slice(0, 180)}`)
+          .join('\n');
+        promptText = `You are the AI editor inside the debate project "${project.name}" (${project.format?.replace(/_/g, ' ') || 'debate'}).
+Resolution/motion: ${project.resolution || 'not set'}. Our side: ${project.side || 'not set'}.
+The student sees these contentions in the Contentions tab, and you can change that list directly through the "actions" you return.
+
+Current contentions (use these exact ids):
+${list || '(none yet)'}
+
+Conversation so far:
+${currentMessages.map(m => `${m.role === 'user' ? 'Student' : 'Editor'}: ${m.content}`).join('\n')}
+
+Return:
+- reply: a short conversational answer in markdown. Say what you changed and why. Never paste a whole rewritten contention into the reply — the app applies your actions to the list, so the text field is only for explanation and advice.
+- actions: the exact changes to make. type "update" needs contentionId plus changes {title, claim, warrant, impact, side, strategicNotes}; type "delete" needs contentionId; type "create" needs title, claim, warrant, impact, side. Use only ids from the list above. Return an empty array when the student only asked a question.
+
+Rules of a good editor: keep the student's voice, one contention per distinct argument, claim/warrant/impact all present, and explain each edit in one short line in "reason".`;
+        if (conferenceContext) promptText += `\n\n${conferenceContext}\nFollow the conference rules/context above.`;
       } else {
         const context = [project.resolution, project.format, project.side].filter(Boolean).join(', ');
         promptText = `You are an AI assistant for the project "${project.name}". Context: ${context}.
@@ -88,8 +154,20 @@ Provide a helpful, accurate response.`;
         if (conferenceContext) promptText += `\n\n${conferenceContext}\nFollow the conference rules/context above.`;
       }
 
-      const res = await base44.integrations.Core.InvokeLLM({ prompt: promptText });
-      await createMessage.mutateAsync({ sessionId, role: "assistant", content: res });
+      if (session?.feature === 'editor') {
+        const res = await base44.integrations.Core.InvokeLLM({ prompt: promptText, response_json_schema: EDITOR_SCHEMA });
+        const actions = Array.isArray(res?.actions) ? res.actions : [];
+        await createMessage.mutateAsync({
+          sessionId,
+          role: "assistant",
+          content: res?.reply || "I couldn't put a reply together — try rephrasing that.",
+          contentionActions: actions.length ? JSON.stringify(actions) : "",
+          actionStatus: "pending",
+        });
+      } else {
+        const res = await base44.integrations.Core.InvokeLLM({ prompt: promptText });
+        await createMessage.mutateAsync({ sessionId, role: "assistant", content: res });
+      }
     } catch (e) {
       console.error(e);
     }
@@ -186,7 +264,18 @@ Provide a helpful, accurate response.`;
           <div key={m.id || i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[85%] rounded-2xl px-5 py-3 text-[15px] ${m.role === "user" ? "bg-primary text-white rounded-tr-sm" : "bg-slate-100 text-slate-800 rounded-tl-sm"}`}>
               {m.role === "assistant" ? (
-                <ReactMarkdown className="prose prose-sm max-w-none prose-slate [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">{m.content}</ReactMarkdown>
+                <>
+                  <ReactMarkdown className="prose prose-sm max-w-none prose-slate [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">{m.content}</ReactMarkdown>
+                  {m.contentionActions && (
+                    <AIChatContentionActions
+                      message={m}
+                      actions={parseActions(m.contentionActions)}
+                      project={project}
+                      contentions={contentions}
+                      onApplied={() => queryClient.invalidateQueries({ queryKey: ['chat_messages', sessionId] })}
+                    />
+                  )}
+                </>
               ) : m.content}
             </div>
           </div>

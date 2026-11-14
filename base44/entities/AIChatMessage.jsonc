@@ -24,6 +24,19 @@
     "content": {
       "type": "string",
       "maxLength": 4000000
+    },
+    "contentionActions": {
+      "type": "string",
+      "description": "JSON array of contention edits (create/update/delete) the AI editor proposes for this message"
+    },
+    "actionStatus": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "applied",
+        "dismissed"
+      ],
+      "default": "pending"
     }
   },
   "required": [
