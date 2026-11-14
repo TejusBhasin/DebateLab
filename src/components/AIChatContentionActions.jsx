@@ -17,7 +17,7 @@ const EDITABLE = ["title", "side", "claim", "warrant", "impact", "strategicNotes
 const formatFor = (project) =>
   ["model_congress", "public_forum", "model_un"].includes(project?.format) ? "public_forum" : "parliamentary";
 
-export default function AIChatContentionActions({ message, actions, project, contentions = [], onApplied }) {
+export default function AIChatContentionActions({ message, actions, project, contentions = [], judgeProfile = null, onApplied }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -31,12 +31,51 @@ export default function AIChatContentionActions({ message, actions, project, con
   const markMessage = (actionStatus) =>
     base44.entities.AIChatMessage.update(message.id, { actionStatus });
 
+  // Judge-tailored contentions live on the judge profile, not in the Contention entity.
+  const applyToJudge = async () => {
+    let next = [...(judgeProfile.tailoredContentions || [])];
+    runnable.forEach((a) => {
+      if (a.type === "create") {
+        next.push({
+          id: `jt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          title: a.title || "Untitled contention",
+          side: a.side || project?.side || "",
+          claim: a.claim || "",
+          warrant: a.warrant || "",
+          impact: a.impact || "",
+          evidence: [],
+          possibleRebuttals: [],
+          rebuttalResponses: [],
+          strategicNotes: a.strategicNotes || "",
+          judgeFit: "",
+        });
+      } else if (a.type === "delete") {
+        next = next.filter((c) => c.id !== a.contentionId);
+      } else {
+        next = next.map((c) => {
+          if (c.id !== a.contentionId) return c;
+          const changes = {};
+          EDITABLE.forEach((k) => {
+            const v = a.changes?.[k] ?? a[k];
+            if (typeof v === "string" && v.trim() && v !== c[k]) changes[k] = v;
+          });
+          return { ...c, ...changes };
+        });
+      }
+    });
+    await base44.entities.JudgeProfile.update(judgeProfile.id, { tailoredContentions: next });
+    queryClient.invalidateQueries({ queryKey: ["judge_profiles", project?.id] });
+  };
+
   const apply = async () => {
     const deletes = runnable.filter((a) => a.type === "delete");
     if (deletes.length > 0 && !confirm(`Delete ${deletes.length} contention${deletes.length === 1 ? "" : "s"}?`)) return;
 
     setWorking(true);
     try {
+      if (judgeProfile) {
+        await applyToJudge();
+      } else {
       for (const a of runnable) {
         const target = known.get(a.contentionId);
         if (a.type === "create") {
@@ -62,9 +101,10 @@ export default function AIChatContentionActions({ message, actions, project, con
           await base44.entities.Contention.delete(target.id);
         }
       }
+      queryClient.invalidateQueries({ queryKey: ["project_contentions", project?.id] });
+      }
       await markMessage("applied");
       setStatus("applied");
-      queryClient.invalidateQueries({ queryKey: ["project_contentions", project?.id] });
       onApplied?.();
       toast({ title: `Contentions updated — ${runnable.length} change${runnable.length === 1 ? "" : "s"} applied` });
     } finally {

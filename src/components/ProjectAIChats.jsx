@@ -55,7 +55,7 @@ const parseActions = (raw) => {
   }
 };
 
-export default function ProjectAIChats({ project, contentions, conferenceContext = "" }) {
+export default function ProjectAIChats({ project, contentions, judgeProfile = null, conferenceContext = "" }) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -131,6 +131,7 @@ Provide specific, actionable coaching advice.`;
         promptText = `You are the AI editor inside the debate project "${project.name}" (${project.format?.replace(/_/g, ' ') || 'debate'}).
 Resolution/motion: ${project.resolution || 'not set'}. Our side: ${project.side || 'not set'}.
 The student sees these contentions in the Contentions tab, and you can change that list directly through the "actions" you return.
+${judgeProfile ? `These are the contentions tailored to judge ${judgeProfile.judgeName}${judgeProfile.judgeSummary ? ` (${judgeProfile.judgeSummary})` : ""}. Keep edits inside that judge's framing and mention it when it matters.` : ""}
 
 Current contentions (use these exact ids):
 ${list || '(none yet)'}
@@ -247,7 +248,9 @@ Provide a helpful, accurate response.`;
             {currentSession?.feature === 'coach' ? <Brain className="w-4 h-4 text-blue-500"/> : <Sparkles className="w-4 h-4 text-violet-500"/>}
             {currentSession?.title || "Chat"}
           </h3>
-          <p className="text-xs text-slate-400 truncate">Tailored to "{project.name}"</p>
+          <p className="text-xs text-slate-400 truncate">
+            {judgeProfile ? `Editing contentions tailored to judge ${judgeProfile.judgeName}` : `Tailored to "${project.name}"`}
+          </p>
         </div>
         <Button variant="outline" size="sm" onClick={saveTranscript} disabled={messages.length === 0} className="gap-1.5 text-xs shrink-0">
           <FileDown className="w-3.5 h-3.5" /> Save as Doc
@@ -272,6 +275,7 @@ Provide a helpful, accurate response.`;
                       actions={parseActions(m.contentionActions)}
                       project={project}
                       contentions={contentions}
+                      judgeProfile={judgeProfile}
                       onApplied={() => queryClient.invalidateQueries({ queryKey: ['chat_messages', sessionId] })}
                     />
                   )}

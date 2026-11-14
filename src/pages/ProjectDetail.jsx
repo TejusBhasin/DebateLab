@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, BookOpen, MessageSquare, StickyNote, Trash2, Plus, ChevronLeft, ChevronRight, ChevronDown, X, Maximize2, Sparkles, Loader2, CheckSquare, Square, Globe, Archive, ArchiveRestore, ShieldAlert, FileText, Users, Activity, Check, Copy, ScrollText, Lightbulb, ExternalLink, Scale, Wand2, FileDown, Mic, HelpCircle, PenLine } from "lucide-react";
+import { ArrowLeft, BookOpen, MessageSquare, StickyNote, Trash2, Plus, ChevronLeft, ChevronRight, ChevronDown, X, Maximize2, Sparkles, Loader2, CheckSquare, Square, Globe, Archive, ArchiveRestore, ShieldAlert, FileText, Users, Activity, Check, Copy, ScrollText, Lightbulb, ExternalLink, Scale, Wand2, FileDown, Mic, HelpCircle, PenLine, Gavel } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import ReactMarkdown from "react-markdown";
@@ -27,6 +27,8 @@ import DocumentViewer from "@/components/DocumentViewer";
 import ConferenceLinkSelect from "@/components/ConferenceLinkSelect";
 import TechniquesLibrary from "@/components/TechniquesLibrary";
 import CounterCaseBuilder from "@/components/CounterCaseBuilder";
+import JudgeCustomizeDialog from "@/components/JudgeCustomizeDialog";
+import JudgeTailoredTab from "@/components/JudgeTailoredTab";
 import QuickCopyDialog from "@/components/QuickCopyDialog";
 import ExportDocButton from "@/components/ExportDocButton";
 import { projectToMarkdown } from "@/lib/exportDoc";
@@ -55,6 +57,8 @@ export default function ProjectDetail() {
   const [rebuttals, setRebuttals] = useState([]);
   const [genOppLoading, setGenOppLoading] = useState(false);
   const [showGen, setShowGen] = useState(false);
+  const [activeJudgeId, setActiveJudgeId] = useState(null);
+  const [judgeDialogOpen, setJudgeDialogOpen] = useState(false);
 
   const { data: project, isLoading: projLoading } = useQuery({
     queryKey: ['project', id],
@@ -82,6 +86,12 @@ export default function ProjectDetail() {
     queryKey: ['project_contentions', id],
     queryFn: () => base44.entities.Contention.filter({ projectId: id }, '-created_date'),
   });
+
+  const { data: judgeProfiles = [] } = useQuery({
+    queryKey: ['judge_profiles', id],
+    queryFn: () => base44.entities.JudgeProfile.filter({ projectId: id }, '-created_date', 50),
+  });
+  const activeJudge = judgeProfiles.find(p => p.id === activeJudgeId) || null;
 
   const { data: collaborators = [] } = useQuery({
     queryKey: ['project_collaborators', id],
@@ -208,6 +218,15 @@ export default function ProjectDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project_contentions', id] });
       logActivity("Deleted Contention", "Removed a contention from the project.");
+    }
+  });
+
+  const deleteJudge = useMutation({
+    mutationFn: (pid) => base44.entities.JudgeProfile.delete(pid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['judge_profiles', id] });
+      setActiveJudgeId(null);
+      toast({ title: "Judge tab deleted" });
     }
   });
 
@@ -541,6 +560,39 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
       {/* Contentions tab */}
       {tab === "contentions" && (
         <div className="space-y-4">
+          {/* Judge-tailored views */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm flex flex-wrap items-center gap-2">
+            <button onClick={() => setActiveJudgeId(null)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${!activeJudge ? "bg-primary text-primary-foreground border-primary" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"}`}>
+              All contentions
+            </button>
+            {judgeProfiles.map(p => (
+              <div key={p.id}
+                className={`flex items-center rounded-xl border transition-colors ${activeJudge?.id === p.id ? "bg-primary border-primary text-primary-foreground" : "bg-white border-slate-200 text-slate-600"}`}>
+                <button onClick={() => setActiveJudgeId(p.id)} className="pl-3 pr-1 py-1.5 text-xs font-semibold whitespace-nowrap">
+                  Tailored to {p.judgeName}
+                </button>
+                <button onClick={() => confirm(`Delete the "${p.judgeName}" tailored tab?`) && deleteJudge.mutate(p.id)}
+                  className="p-1.5 pr-2 opacity-60 hover:opacity-100" title="Delete this tab">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" onClick={() => setJudgeDialogOpen(true)} disabled={project.isArchived}
+              className="gap-1.5 text-xs ml-auto">
+              <Gavel className="w-3.5 h-3.5" /> Customize to Judge
+            </Button>
+          </div>
+
+          {activeJudge ? (
+            <JudgeTailoredTab
+              profile={activeJudge}
+              project={project}
+              contentions={contentions}
+              onDeleted={() => setActiveJudgeId(null)}
+            />
+          ) : (
+          <>
           {/* Contention Generator */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <button onClick={() => setShowGen(!showGen)} className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
@@ -662,6 +714,8 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
               ))}
             </div>
           )}
+          </>
+          )}
         </div>
       )}
 
@@ -730,7 +784,12 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
 
       {/* AI Chat tab */}
       {tab === "chat" && (
-        <ProjectAIChats project={project} contentions={contentions} conferenceContext={conferenceContext} />
+        <ProjectAIChats
+          project={project}
+          contentions={activeJudge ? activeJudge.tailoredContentions || [] : contentions}
+          judgeProfile={activeJudge}
+          conferenceContext={conferenceContext}
+        />
       )}
 
       {/* Collab Tab */}
@@ -843,6 +902,14 @@ Generate 2-3 strong, evidence-backed rebuttals to their arguments. Format as a c
           />
         </div>
       )}
+
+      <JudgeCustomizeDialog
+        open={judgeDialogOpen}
+        onOpenChange={setJudgeDialogOpen}
+        project={project}
+        contentions={contentions}
+        onCreated={(p) => { setActiveJudgeId(p.id); setTab("contentions"); }}
+      />
 
       {viewDoc && (
         <DocumentViewer
