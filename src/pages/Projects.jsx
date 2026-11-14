@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Folder, FolderPlus, Plus, Trash2, ArrowRight, Archive, ArchiveRestore, Landmark, ChevronDown, ChevronRight } from "lucide-react";
+import { Folder, FolderPlus, Plus, Trash2, ArrowRight, Archive, ArchiveRestore, Landmark, ChevronDown, ChevronRight, Bot } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import ProjectSuggestionsWidget from "@/components/ProjectSuggestionsWidget";
@@ -173,6 +173,9 @@ export default function Projects() {
               <Archive className="w-3.5 h-3.5" />{showArchived ? "Hide Archived" : `Archived (${archivedProjects.length})`}
             </Button>
           )}
+          <Button variant="outline" size="sm" asChild className="gap-1.5 text-slate-900">
+            <Link to="/ai-archive"><Bot className="w-4 h-4" /> AI Archive</Link>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowFolder(true)} className="gap-1.5 text-slate-900">
             <FolderPlus className="w-4 h-4" /> New Folder
           </Button>

@@ -1,84 +1,31 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Sparkles, Save, Trash2, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, Sparkles, Save, Trash2, BookOpen, ChevronDown, ChevronRight, RefreshCw, ShieldCheck } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import ContextInput from "./ContextInput";
 import ConferenceContextPicker, { buildConferenceContextText } from "./ConferenceContextPicker";
 import ContentionCard from "./ContentionCard";
-
-const BATCH_SIZE = 8;
-
-const SCHEMA = {
-  type: "object",
-  properties: {
-    contentions: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          title: { type: "string" },
-          claim: { type: "string" },
-          warrant: { type: "string" },
-          impact: { type: "string" },
-          evidence: { type: "array", items: { type: "object", properties: { text: { type: "string" }, source: { type: "string" }, sourceUrl: { type: "string" } }, required: ["text", "source", "sourceUrl"] } },
-          possibleRebuttals: { type: "array", items: { type: "string" } },
-          rebuttalResponses: { type: "array", items: { type: "string" } },
-          crossfireQuestions: { type: "array", items: { type: "string" } },
-          crossfireAnswers: { type: "array", items: { type: "string" } },
-          strategicNotes: { type: "string" }
-        },
-        required: ["title", "claim", "warrant", "impact", "evidence", "possibleRebuttals", "rebuttalResponses", "crossfireQuestions", "crossfireAnswers", "strategicNotes"]
-      }
-    }
-  },
-  required: ["contentions"]
-};
+import { runContentionsGeneration, buildGenerationPrompt, getSide, normalizeSideValue } from "@/lib/contentionPrompt";
 
 export async function generateBatch(count, form, format, aiMode, conferenceText, projectFormat) {
-  const isCongress = projectFormat === "model_congress";
-  const isMUN = projectFormat === "model_un";
-  const fmtLabel = isCongress ? "Model Congress" : (isMUN ? "Model UN" : (format === "parliamentary" ? "Parliamentary" : "Public Forum"));
-  const motionLabel = isCongress ? "Bill/Resolution" : (isMUN ? "Resolution/Topic" : (format === "parliamentary" ? "Motion" : "Resolution"));
-
-  let promptText = `Generate ${count} complete tournament-ready contentions for ${fmtLabel} debate.
-
-${motionLabel}: "${form.resolution}"
-Side: ${form.side}
-Difficulty: ${form.difficulty}
-Evidence preference: ${form.evidencePreference}
-${form.context ? `\nAdditional context from the debater (prioritize this): ${form.context}\n` : ""}
-${conferenceText ? `\n${conferenceText}\nAdhere to the conference rules/context above.\n` : ""}
-Create comprehensive, tournament-quality contentions with real academic evidence, statistics, and expert citations. Include realistic source URLs. Make each contention distinct and strategically strong.
-- ORIGINALITY IS CRITICAL: Every contention must be COMPLETELY ORIGINAL and unique. Do NOT reuse any phrases, argument structures, framing, or rhetorical patterns across contentions or from previous outputs. Each contention should feel like it was written from scratch by a human, never formulaic, generic, or templated. Vary your word choice, sentence structure, and strategic approach for each one.
-- STAY ON TOPIC: Every contention must directly address the specific ${motionLabel} and side provided. Do NOT drift into generic debate arguments, tangential points, or broad claims that aren't grounded in the specific resolution. If an argument could apply to any debate on any topic, rewrite it to be specific to THIS resolution. Use real evidence and specific reasoning tied to the actual topic — don't fall back on generic-sounding claims.
-
-Return a JSON object with a "contentions" array. Each must include: title, claim, warrant, impact, evidence (array of {text, source, sourceUrl}), possibleRebuttals, rebuttalResponses, crossfireQuestions, crossfireAnswers, strategicNotes.`;
-
-  if (aiMode === "dampened") {
-    promptText += `\n\nCRITICAL: The user has Dampened AI enabled.
-- You MUST NOT write out the fully flushed contentions.
-- Instead, provide structural outlines. Provide bullet points for claim/warrant/impact.
-- Focus purely on evidence and high-level strategy.
-- Do NOT provide a full speech script that they can copy-paste.`;
-  }
-
-  if (isCongress) {
-    promptText += `\n\nThis is for Model Congress. Structure arguments as legislative arguments for/against the bill. Use congressional debate terminology (sponsor, co-sponsor, ranking member, etc.).`;
-  }
-  if (isMUN) {
-    promptText += `\n\nThis is for Model UN. Structure arguments as resolution clauses and diplomatic points. Use MUN terminology (fellow delegates, resolution, operative clauses, etc.).`;
-  }
-
-  const result = await base44.integrations.Core.InvokeLLM({
-    prompt: promptText,
-    response_json_schema: SCHEMA,
+  const { contentions } = await runContentionsGeneration({
+    count,
+    resolution: form.resolution,
+    sideValue: form.side,
+    difficulty: form.difficulty,
+    evidencePreference: form.evidencePreference,
+    context: form.context,
+    conferenceText,
+    projectFormat,
+    format,
+    aiMode,
   });
-  return result.contentions || [];
+  return contentions;
 }
 
 export default function ProjectContentionGenerator({ project, contentions, conferenceProfile: defaultProfile, aiMode = "full", onSaved }) {
@@ -90,7 +37,7 @@ export default function ProjectContentionGenerator({ project, contentions, confe
 
   const [form, setForm] = useState({
     resolution: project?.resolution || "",
-    side: project?.side || "",
+    side: normalizeSideValue(projectFormat, project?.side),
     count: "2",
     difficulty: "intermediate",
     evidencePreference: "academic",
@@ -100,26 +47,44 @@ export default function ProjectContentionGenerator({ project, contentions, confe
   const [generated, setGenerated] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const buildContention = (c) => ({
+  const { data: generationRecords = [] } = useQuery({
+    queryKey: ['generation_records', project?.id],
+    queryFn: () => base44.entities.GenerationRecord.filter({ projectId: project?.id }, '-created_date', 5),
+    enabled: !!project?.id,
+  });
+  const lastRecord = generationRecords[0];
+
+  const buildContention = (c, src = null) => ({
     ownerUserId: user?.id,
     title: c.title,
     format,
-    resolution: form.resolution || project?.resolution || "",
-    side: form.side || project?.side || "",
+    resolution: src?.resolution || form.resolution || project?.resolution || "",
+    side: src?.sideValue || form.side || project?.side || "",
     claim: c.claim, warrant: c.warrant, impact: c.impact, evidence: c.evidence,
     possibleRebuttals: c.possibleRebuttals, rebuttalResponses: c.rebuttalResponses,
     crossfireQuestions: c.crossfireQuestions, crossfireAnswers: c.crossfireAnswers,
-    strategicNotes: c.strategicNotes, difficulty: form.difficulty,
+    strategicNotes: c.strategicNotes, difficulty: src?.difficulty || form.difficulty,
     projectId: project?.id,
   });
 
+  const trackSaved = async (ids) => {
+    if (!lastRecord?.id || ids.length === 0) return;
+    const current = await base44.entities.GenerationRecord.get(lastRecord.id);
+    await base44.entities.GenerationRecord.update(lastRecord.id, {
+      contentionIds: [...(current?.contentionIds || []), ...ids],
+    });
+    queryClient.invalidateQueries({ queryKey: ['generation_records', project?.id] });
+  };
+
   const saveAll = async () => {
     if (generated.length === 0) return;
-    await Promise.all(generated.map(c => base44.entities.Contention.create(buildContention(c))));
+    const created = await Promise.all(generated.map(c => base44.entities.Contention.create(buildContention(c))));
+    await trackSaved(created.map(c => c.id));
     queryClient.invalidateQueries({ queryKey: ['project_contentions', project?.id] });
     onSaved?.();
     toast({ title: `${generated.length} contentions saved to project!` });
@@ -127,7 +92,8 @@ export default function ProjectContentionGenerator({ project, contentions, confe
   };
 
   const saveOne = async (c) => {
-    await base44.entities.Contention.create(buildContention(c));
+    const created = await base44.entities.Contention.create(buildContention(c));
+    await trackSaved([created.id]);
     queryClient.invalidateQueries({ queryKey: ['project_contentions', project?.id] });
     onSaved?.();
     toast({ title: "Contention saved to project!" });
@@ -149,15 +115,69 @@ export default function ProjectContentionGenerator({ project, contentions, confe
     }
     setGenerating(true);
     setGenerated([]);
-    const total = parseInt(form.count);
-    const batches = [];
-    for (let i = 0; i < total; i += BATCH_SIZE) batches.push(Math.min(BATCH_SIZE, total - i));
-    const conferenceText = buildConferenceContextText(conferenceProfile || defaultProfile);
-    const batchResults = await Promise.all(batches.map(n => generateBatch(n, form, format, aiMode, conferenceText, projectFormat)));
-    const all = batchResults.flat().slice(0, total);
-    setGenerated(all);
-    setGenerating(false);
-    toast({ title: `${all.length} contentions generated!` });
+    const params = {
+      count: parseInt(form.count),
+      resolution: form.resolution,
+      sideValue: form.side,
+      difficulty: form.difficulty,
+      evidencePreference: form.evidencePreference,
+      context: form.context,
+      conferenceText: buildConferenceContextText(conferenceProfile || defaultProfile),
+      projectFormat,
+      format,
+      aiMode,
+    };
+    try {
+      const result = await runContentionsGeneration(params);
+      setGenerated(result.contentions);
+      await base44.entities.GenerationRecord.create({
+        ownerUserId: user?.id,
+        projectId: project?.id,
+        kind: "project_contentions",
+        label: `${result.contentions.length} contentions · ${getSide(projectFormat, form.side).label} · ${form.difficulty}`,
+        prompt: buildGenerationPrompt(params),
+        count: parseInt(form.count),
+        params,
+        contentionIds: [],
+      });
+      queryClient.invalidateQueries({ queryKey: ['generation_records', project?.id] });
+      const fixNote = result.fixed + result.flagged > 0
+        ? ` Self-check caught ${result.fixed + result.flagged} weak or wrong-side argument${result.fixed + result.flagged === 1 ? "" : "s"}.`
+        : "";
+      toast({ title: `${result.contentions.length} contentions generated!${fixNote}` });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // One button, same prompt, same amount: replaces the set this record produced.
+  const regenerateSame = async () => {
+    if (!lastRecord || regenerating) return;
+    const savedCount = (lastRecord.contentionIds || []).length;
+    const msg = savedCount > 0
+      ? `Regenerate this exact set (${lastRecord.count} contentions, same prompt)? The ${savedCount} contentions saved from it will be replaced.`
+      : `Regenerate this exact set (${lastRecord.count} contentions, same prompt)?`;
+    if (!confirm(msg)) return;
+    setRegenerating(true);
+    try {
+      const result = await runContentionsGeneration(lastRecord.params);
+      // Nothing was saved from that run yet — just refresh the preview.
+      if (savedCount === 0) {
+        setGenerated(result.contentions);
+        toast({ title: `${result.contentions.length} contentions regenerated with the same prompt` });
+        return;
+      }
+      await Promise.all((lastRecord.contentionIds || []).map(cid => base44.entities.Contention.delete(cid).catch(() => {})));
+      const created = await Promise.all(result.contentions.map(c => base44.entities.Contention.create(buildContention(c, lastRecord.params))));
+      await base44.entities.GenerationRecord.update(lastRecord.id, { contentionIds: created.map(c => c.id) });
+      setGenerated([]);
+      queryClient.invalidateQueries({ queryKey: ['generation_records', project?.id] });
+      queryClient.invalidateQueries({ queryKey: ['project_contentions', project?.id] });
+      onSaved?.();
+      toast({ title: `${created.length} contentions regenerated with the same prompt` });
+    } finally {
+      setRegenerating(false);
+    }
   };
 
   const sideOptions = isCongress
@@ -206,6 +226,7 @@ export default function ProjectContentionGenerator({ project, contentions, confe
                 <SelectTrigger className="text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>{sideOptions.map(o => <SelectItem key={o.v} value={o.v}>{o.l}</SelectItem>)}</SelectContent>
               </Select>
+              {form.side && <p className="text-[11px] text-slate-400 mt-1">{getSide(projectFormat, form.side).meaning}</p>}
             </div>
             <div>
               <label className="text-xs font-medium text-slate-600 mb-1.5 block">Count</label>
@@ -255,10 +276,30 @@ export default function ProjectContentionGenerator({ project, contentions, confe
 
           <Button onClick={generate} disabled={generating} className="w-full h-11 gap-2 text-sm font-semibold">
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {generating ? `Generating ${form.count} contentions...` : "Generate Contentions"}
+            {generating ? `Generating and checking ${form.count} contentions...` : "Generate Contentions"}
           </Button>
+          <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1">
+            <ShieldCheck className="w-3 h-3" /> Every set is automatically re-checked for wrong-side and weak arguments before it appears.
+          </p>
         </div>
       </div>
+
+      {lastRecord && (
+        <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-violet-600">Last generation</div>
+            <p className="text-sm text-slate-700 truncate">{lastRecord.label}</p>
+            <p className="text-xs text-slate-500">
+              {new Date(lastRecord.created_date).toLocaleString()} · {(lastRecord.contentionIds || []).length} saved to this project
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={regenerateSame} disabled={regenerating}
+            className="gap-1.5 text-xs border-violet-300 text-violet-700 hover:bg-violet-100 shrink-0">
+            {regenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            {regenerating ? "Regenerating…" : "Regenerate same set"}
+          </Button>
+        </div>
+      )}
 
       {generated.length > 0 && (
         <div className="space-y-4">
@@ -272,7 +313,14 @@ export default function ProjectContentionGenerator({ project, contentions, confe
             </Button>
           </div>
           {generated.map((c, i) => (
-            <div key={i} className="relative">
+            <div key={i} className="space-y-1">
+              <div className="flex items-center gap-2 px-1 flex-wrap">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Argues</span>
+                <span className="text-[10px] font-semibold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
+                  {getSide(projectFormat, c.side).label}
+                </span>
+                {c.selfCheckNote && <span className="text-[10px] text-amber-600">Self-check: {c.selfCheckNote}</span>}
+              </div>
               <ContentionCard contention={c} onSave={() => saveOne(c)} saving={false} defaultExpanded />
             </div>
           ))}

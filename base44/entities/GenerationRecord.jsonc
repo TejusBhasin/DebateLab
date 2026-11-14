@@ -1,0 +1,94 @@
+{
+  "name": "GenerationRecord",
+  "type": "object",
+  "properties": {
+    "ownerUserId": {
+      "type": "string",
+      "maxLength": 4000000
+    },
+    "projectId": {
+      "type": "string",
+      "maxLength": 4000000
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "project_contentions"
+      ],
+      "default": "project_contentions",
+      "maxLength": 4000000
+    },
+    "label": {
+      "type": "string",
+      "maxLength": 4000000
+    },
+    "prompt": {
+      "type": "string",
+      "description": "The exact prompt that produced this set, so it can be regenerated verbatim"
+    },
+    "count": {
+      "type": "number"
+    },
+    "params": {
+      "type": "object"
+    },
+    "contentionIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 4000000
+      }
+    }
+  },
+  "required": [
+    "count"
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.ownerUserId": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.ownerUserId": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.ownerUserId": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

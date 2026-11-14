@@ -50,6 +50,7 @@ import SpeechGenerator from './pages/SpeechGenerator';
 import Feedback from './pages/Feedback';
 import DebateToolkit from './pages/DebateToolkit';
 import EvidenceLibrary from './pages/EvidenceLibrary';
+import AIArchive from './pages/AIArchive';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated } = useAuth();
@@ -144,6 +145,7 @@ const AuthenticatedApp = () => {
           <Route path="/feedback" element={<Feedback />} />
           <Route path="/toolkit" element={<DebateToolkit />} />
           <Route path="/evidence" element={<EvidenceLibrary />} />
+          <Route path="/ai-archive" element={<AIArchive />} />
         </Route>
         <Route path="*" element={<PageNotFound />} />
       </Routes>

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Sparkles, Save, BookOpen, Info } from "lucide-react";
+import { Loader2, Sparkles, Save, BookOpen, Info, ShieldCheck } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/AuthContext";
 import ContentionCard from "./ContentionCard";
@@ -14,71 +14,11 @@ import { contentionsToMarkdown } from "@/lib/exportDoc";
 import SaveToProjectDialog from "./SaveToProjectDialog";
 import ContextInput from "./ContextInput";
 import ConferenceContextPicker, { buildConferenceContextText } from "./ConferenceContextPicker";
-
-const BATCH_SIZE = 8;
-
-const SCHEMA = {
-  type: "object",
-  properties: {
-    contentions: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          title: { type: "string" },
-          claim: { type: "string" },
-          warrant: { type: "string" },
-          impact: { type: "string" },
-          evidence: { type: "array", items: { type: "object", properties: { text: { type: "string" }, source: { type: "string" }, sourceUrl: { type: "string" } }, required: ["text", "source", "sourceUrl"] } },
-          possibleRebuttals: { type: "array", items: { type: "string" } },
-          rebuttalResponses: { type: "array", items: { type: "string" } },
-          crossfireQuestions: { type: "array", items: { type: "string" } },
-          crossfireAnswers: { type: "array", items: { type: "string" } },
-          strategicNotes: { type: "string" }
-        },
-        required: ["title", "claim", "warrant", "impact", "evidence", "possibleRebuttals", "rebuttalResponses", "crossfireQuestions", "crossfireAnswers", "strategicNotes"]
-      }
-    }
-  },
-  required: ["contentions"]
-};
-
-async function generateBatch(count, form, format, aiMode, conferenceText) {
-  const fmtLabel = format === "parliamentary" ? "Parliamentary" : "Public Forum";
-  const motionLabel = format === "parliamentary" ? "Motion" : "Resolution";
-  
-  let promptText = `Generate ${count} complete tournament-ready contentions for ${fmtLabel} debate.
-
-${motionLabel}: "${form.resolution}"
-Side: ${form.side}
-Difficulty: ${form.difficulty}
-Evidence preference: ${form.evidencePreference}
-${form.context ? `\nAdditional context from the debater (prioritize this): ${form.context}\n` : ""}
-${conferenceText ? `\n${conferenceText}\nAdhere to the conference rules/context above.\n` : ""}
-Create comprehensive, tournament-quality contentions with real academic evidence, statistics, and expert citations. Make each contention distinct and strategically strong.
-- ORIGINALITY IS CRITICAL: Every contention must be COMPLETELY ORIGINAL and unique. Do NOT reuse any phrases, argument structures, framing, or rhetorical patterns across contentions or from previous outputs. Each contention should feel like it was written from scratch by a human, never formulaic, generic, or templated. Vary your word choice, sentence structure, and strategic approach for each one.
-- STAY ON TOPIC: Every contention must directly address the specific ${motionLabel} and side provided. Do NOT drift into generic debate arguments, tangential points, or broad claims that aren't grounded in the specific resolution. If an argument could apply to any debate on any topic, rewrite it to be specific to THIS resolution. Use real evidence and specific reasoning tied to the actual topic — don't fall back on generic-sounding claims.
-
-Return a JSON object with a "contentions" array. Each must include: title, claim, warrant, impact, evidence (array of {text, source, sourceUrl}), possibleRebuttals, rebuttalResponses, crossfireQuestions, crossfireAnswers, strategicNotes.`;
-
-  if (aiMode === "dampened") {
-    promptText += `\n\nCRITICAL: The user has Dampened AI enabled. 
-- You MUST NOT write out the fully flushed contentions.
-- Instead, provide structural outlines. Provide bullet points for claim/warrant/impact.
-- Focus purely on evidence and high-level strategy.
-- Do NOT provide a full speech script that they can copy-paste.`;
-  }
-
-  const result = await base44.integrations.Core.InvokeLLM({
-    prompt: promptText,
-    response_json_schema: SCHEMA,
-  });
-  return result.contentions || [];
-}
+import { runContentionsGeneration, getSide, normalizeSideValue } from "@/lib/contentionPrompt";
 
 export default function ContentionGenerator({ format = "parliamentary" }) {
   const [activeTab, setActiveTab] = useState("generate");
-  const [form, setForm] = useState({ resolution: "", side: "", count: "2", difficulty: "intermediate", evidencePreference: "academic", context: "" });
+  const [form, setForm] = useState({ resolution: "", side: normalizeSideValue(format, ""), count: "2", difficulty: "intermediate", evidencePreference: "academic", context: "" });
   const [conferenceProfile, setConferenceProfile] = useState(null);
   const [generatedContentions, setGeneratedContentions] = useState([]);
   const [generating, setGenerating] = useState(false);
@@ -144,16 +84,27 @@ export default function ContentionGenerator({ format = "parliamentary" }) {
     }
     setGenerating(true);
     setGeneratedContentions([]);
-    const total = parseInt(form.count);
-    const batches = [];
-    for (let i = 0; i < total; i += BATCH_SIZE) batches.push(Math.min(BATCH_SIZE, total - i));
-    const aiMode = profile?.defaultAiMode || "full";
-    const conferenceText = buildConferenceContextText(conferenceProfile);
-    const batchResults = await Promise.all(batches.map(n => generateBatch(n, form, format, aiMode, conferenceText)));
-    const all = batchResults.flat().slice(0, total);
-    setGeneratedContentions(all);
-    setGenerating(false);
-    toast({ title: `${all.length} contention${all.length !== 1 ? 's' : ''} generated!` });
+    try {
+      const result = await runContentionsGeneration({
+        count: parseInt(form.count),
+        resolution: form.resolution,
+        sideValue: form.side,
+        difficulty: form.difficulty,
+        evidencePreference: form.evidencePreference,
+        context: form.context,
+        conferenceText: buildConferenceContextText(conferenceProfile),
+        projectFormat: format,
+        format,
+        aiMode: profile?.defaultAiMode || "full",
+      });
+      setGeneratedContentions(result.contentions);
+      const fixNote = result.fixed + result.flagged > 0
+        ? ` Self-check caught ${result.fixed + result.flagged} weak or wrong-side argument${result.fixed + result.flagged === 1 ? "" : "s"}.`
+        : "";
+      toast({ title: `${result.contentions.length} contention${result.contentions.length !== 1 ? "s" : ""} generated!${fixNote}` });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const sideOptions = format === "parliamentary"
@@ -233,6 +184,7 @@ export default function ContentionGenerator({ format = "parliamentary" }) {
                     <SelectTrigger className="text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>{sideOptions.map(o => <SelectItem key={o.v} value={o.v}>{o.l}</SelectItem>)}</SelectContent>
                   </Select>
+                  {form.side && <p className="text-[11px] text-slate-400 mt-1">{getSide(format, form.side).meaning}</p>}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-600 mb-1.5 block">Count</label>
@@ -282,8 +234,11 @@ export default function ContentionGenerator({ format = "parliamentary" }) {
 
               <Button onClick={generate} disabled={generating} className="w-full h-11 gap-2 text-sm font-semibold">
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                {generating ? `Generating ${form.count} contentions...` : "Generate Contentions"}
+                {generating ? `Generating and checking ${form.count} contentions...` : "Generate Contentions"}
               </Button>
+              <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1">
+                <ShieldCheck className="w-3 h-3" /> Every set is automatically re-checked for wrong-side and weak arguments before it appears.
+              </p>
             </div>
           </div>
 
